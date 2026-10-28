@@ -1,10 +1,14 @@
 {
-  "name": "chat-boteb14-foodtv",
-  "version": "1.0.0",
-  "description": "ChatDonald’s - juego de cocina interactivo para Twitch",
-  "type": "module",
+  "name": "chatdonalds",
+  "version": "0.1.0",
+  "description": "Chat’Donald’s — juego interactivo de restaurante con Twitch",
+  "main": "server.js",
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
     "express": "^5.1.0"
