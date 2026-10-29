@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    name="description"
+    content="chat-BotEB14-FoodTV - restaurante pixel art interactivo"
+  >
+
+  <title>chat-BotEB14-FoodTV</title>
+
+  <link rel="stylesheet" href="/styles/main.css">
+</head>
+
+<body>
+  <main class="app">
+    <header class="app-header">
+      <div>
+        <h1>chat-BotEB14-FoodTV</h1>
+        <p>Restaurante pixel art interactivo</p>
+      </div>
+
+      <div
+        id="server-status"
+        class="status status-checking"
+        aria-live="polite"
+      >
+        Comprobando servidor...
+      </div>
+    </header>
+
+    <section class="game-container">
+      <div class="game-placeholder">
+        <div class="pixel-building" aria-hidden="true">
+          🍔
+        </div>
+
+        <h2>Restaurante en construcción</h2>
+
+        <p>
+          El motor del restaurante se añadirá en las siguientes etapas.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    async function checkServerStatus() {
+      const statusElement = document.getElementById("server-status");
+
+      try {
+        const response = await fetch("/health", {
+          method: "GET",
+          cache: "no-store"
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.status === "online") {
+          statusElement.textContent = "Servidor online";
+          statusElement.className = "status status-online";
+        } else {
+          throw new Error("Estado del servidor no válido");
+        }
+      } catch (error) {
+        console.error("No se pudo comprobar el servidor:", error);
+
+        statusElement.textContent = "Servidor no disponible";
+        statusElement.className = "status status-offline";
+      }
+    }
+
+    checkServerStatus();
+  </script>
+</body>
+</html>
