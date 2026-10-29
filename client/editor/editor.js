@@ -8,23 +8,34 @@ const typeElement = document.querySelector("#element-type");
 const idElement = document.querySelector("#element-id");
 
 const placeButton = document.querySelector("#place-button");
+const deleteButton = document.querySelector("#delete-button");
 const clearButton = document.querySelector("#clear-button");
 
 const coordXElement = document.querySelector("#coord-x");
 const coordYElement = document.querySelector("#coord-y");
 
-const normalizedXElement = document.querySelector("#normalized-x");
-const normalizedYElement = document.querySelector("#normalized-y");
+const normalizedXElement =
+  document.querySelector("#normalized-x");
+
+const normalizedYElement =
+  document.querySelector("#normalized-y");
+
+const elementList =
+  document.querySelector("#element-list");
 
 let mapDefinition = null;
 let mapImage = null;
 
 let placing = false;
-let selectedPoint = null;
+let selectedElementId = null;
+
+const elements = [];
 
 async function loadMap() {
   try {
-    const response = await fetch("/assets/restaurant/map.json");
+    const response = await fetch(
+      "/assets/restaurant/map.json"
+    );
 
     if (!response.ok) {
       throw new Error("No se pudo cargar map.json.");
@@ -43,10 +54,13 @@ async function loadMap() {
       statusElement.textContent = "Mapa cargado";
 
       render();
+      renderElementList();
     };
 
     mapImage.onerror = () => {
-      throw new Error("No se pudo cargar map-background.png.");
+      throw new Error(
+        "No se pudo cargar map-background.png."
+      );
     };
 
     mapImage.src = mapDefinition.background.asset;
@@ -73,7 +87,9 @@ function validateMap(map) {
   }
 
   if (!map.background.asset) {
-    throw new Error("El mapa no tiene ruta de fondo.");
+    throw new Error(
+      "El mapa no tiene ruta de fondo."
+    );
   }
 }
 
@@ -97,36 +113,35 @@ function render() {
     canvas.height
   );
 
-  if (selectedPoint) {
-    drawSelectedPoint();
+  for (const element of elements) {
+    drawElement(element);
   }
 }
 
-function drawSelectedPoint() {
-  const point = selectedPoint;
+function drawElement(element) {
+  const selected =
+    element.id === selectedElementId;
 
   ctx.save();
 
   ctx.beginPath();
+
   ctx.arc(
-    point.x,
-    point.y,
-    12,
+    element.x,
+    element.y,
+    selected ? 14 : 10,
     0,
     Math.PI * 2
   );
 
-  ctx.strokeStyle = "#ff0000";
+  ctx.fillStyle = selected
+    ? "#ffff00"
+    : "#ff3333";
+
+  ctx.fill();
+
+  ctx.strokeStyle = "#000";
   ctx.lineWidth = 3;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(point.x - 18, point.y);
-  ctx.lineTo(point.x + 18, point.y);
-
-  ctx.moveTo(point.x, point.y - 18);
-  ctx.lineTo(point.x, point.y + 18);
-
   ctx.stroke();
 
   ctx.fillStyle = "#fff";
@@ -134,9 +149,9 @@ function drawSelectedPoint() {
   ctx.textAlign = "left";
 
   ctx.fillText(
-    point.id || "sin-id",
-    point.x + 20,
-    point.y - 20
+    element.id,
+    element.x + 18,
+    element.y - 8
   );
 
   ctx.restore();
@@ -145,8 +160,11 @@ function drawSelectedPoint() {
 function getCanvasPosition(event) {
   const rect = canvas.getBoundingClientRect();
 
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
+  const scaleX =
+    canvas.width / rect.width;
+
+  const scaleY =
+    canvas.height / rect.height;
 
   return {
     x: (event.clientX - rect.left) * scaleX,
@@ -154,66 +172,259 @@ function getCanvasPosition(event) {
   };
 }
 
-function selectPosition(event) {
-  if (!placing) {
+function createElement(event) {
+  const position = getCanvasPosition(event);
+
+  const id =
+    idElement.value.trim();
+
+  if (!id) {
+    messageElement.textContent =
+      "Debes introducir un ID.";
     return;
   }
 
-  const position = getCanvasPosition(event);
+  if (
+    elements.some(
+      (element) => element.id === id
+    )
+  ) {
+    messageElement.textContent =
+      `El ID "${id}" ya existe.`;
 
-  const normalizedX = position.x / canvas.width;
-  const normalizedY = position.y / canvas.height;
+    return;
+  }
 
-  selectedPoint = {
-    id: idElement.value.trim() || "unnamed",
+  const element = {
+    id,
     type: typeElement.value,
+
     x: Math.round(position.x),
     y: Math.round(position.y),
-    normalizedX: Number(normalizedX.toFixed(6)),
-    normalizedY: Number(normalizedY.toFixed(6))
+
+    normalizedX: Number(
+      (position.x / canvas.width).toFixed(6)
+    ),
+
+    normalizedY: Number(
+      (position.y / canvas.height).toFixed(6)
+    )
   };
 
-  coordXElement.textContent = selectedPoint.x;
-  coordYElement.textContent = selectedPoint.y;
+  elements.push(element);
 
-  normalizedXElement.textContent =
-    selectedPoint.normalizedX;
+  selectedElementId = element.id;
 
-  normalizedYElement.textContent =
-    selectedPoint.normalizedY;
+  placing = false;
+
+  placeButton.textContent =
+    "Activar colocación";
+
+  updateEditorData();
+  render();
+  renderElementList();
 
   messageElement.textContent =
-    "Punto seleccionado. Todavía no se ha guardado.";
-
-  render();
+    `Elemento "${id}" creado.`;
 }
 
-placeButton.addEventListener("click", () => {
-  placing = !placing;
+function selectElementAtPosition(event) {
+  const position =
+    getCanvasPosition(event);
 
-  placeButton.textContent = placing
-    ? "Colocación activa"
-    : "Activar colocación";
+  let closest = null;
+  let closestDistance = Infinity;
 
-  messageElement.textContent = placing
-    ? "Toca una posición sobre el mapa."
-    : "Colocación desactivada.";
-});
+  for (const element of elements) {
+    const dx =
+      element.x - position.x;
 
-clearButton.addEventListener("click", () => {
-  selectedPoint = null;
+    const dy =
+      element.y - position.y;
 
-  coordXElement.textContent = "—";
-  coordYElement.textContent = "—";
+    const distance =
+      Math.sqrt(dx * dx + dy * dy);
 
-  normalizedXElement.textContent = "—";
-  normalizedYElement.textContent = "—";
+    if (
+      distance <= 25 &&
+      distance < closestDistance
+    ) {
+      closest = element;
+      closestDistance = distance;
+    }
+  }
 
-  messageElement.textContent = "";
+  if (!closest) {
+    return;
+  }
 
+  selectedElementId = closest.id;
+
+  updateEditorData();
   render();
-});
+  renderElementList();
+}
 
-canvas.addEventListener("pointerdown", selectPosition);
+function updateEditorData() {
+  const element =
+    elements.find(
+      (item) => item.id === selectedElementId
+    );
+
+  if (!element) {
+    coordXElement.textContent = "—";
+    coordYElement.textContent = "—";
+
+    normalizedXElement.textContent = "—";
+    normalizedYElement.textContent = "—";
+
+    return;
+  }
+
+  idElement.value = element.id;
+  typeElement.value = element.type;
+
+  coordXElement.textContent =
+    element.x;
+
+  coordYElement.textContent =
+    element.y;
+
+  normalizedXElement.textContent =
+    element.normalizedX;
+
+  normalizedYElement.textContent =
+    element.normalizedY;
+}
+
+function deleteSelectedElement() {
+  if (!selectedElementId) {
+    messageElement.textContent =
+      "No hay ningún elemento seleccionado.";
+
+    return;
+  }
+
+  const index =
+    elements.findIndex(
+      (element) =>
+        element.id === selectedElementId
+    );
+
+  if (index === -1) {
+    return;
+  }
+
+  const deleted =
+    elements.splice(index, 1)[0];
+
+  selectedElementId = null;
+
+  updateEditorData();
+  render();
+  renderElementList();
+
+  messageElement.textContent =
+    `Elemento "${deleted.id}" eliminado.`;
+}
+
+function renderElementList() {
+  elementList.innerHTML = "";
+
+  if (elements.length === 0) {
+    elementList.textContent =
+      "No hay elementos.";
+    return;
+  }
+
+  for (const element of elements) {
+    const item =
+      document.createElement("div");
+
+    item.className = "element-item";
+
+    if (
+      element.id === selectedElementId
+    ) {
+      item.classList.add("selected");
+    }
+
+    const title =
+      document.createElement("strong");
+
+    title.textContent = element.id;
+
+    const details =
+      document.createElement("span");
+
+    details.textContent =
+      `${element.type} · X ${element.x} · Y ${element.y}`;
+
+    item.appendChild(title);
+    item.appendChild(details);
+
+    item.addEventListener(
+      "click",
+      () => {
+        selectedElementId =
+          element.id;
+
+        updateEditorData();
+        render();
+        renderElementList();
+      }
+    );
+
+    elementList.appendChild(item);
+  }
+}
+
+placeButton.addEventListener(
+  "click",
+  () => {
+    placing = !placing;
+
+    placeButton.textContent =
+      placing
+        ? "Colocación activa"
+        : "Activar colocación";
+
+    messageElement.textContent =
+      placing
+        ? "Toca una posición del mapa."
+        : "Colocación desactivada.";
+  }
+);
+
+deleteButton.addEventListener(
+  "click",
+  deleteSelectedElement
+);
+
+clearButton.addEventListener(
+  "click",
+  () => {
+    selectedElementId = null;
+
+    updateEditorData();
+    render();
+    renderElementList();
+
+    messageElement.textContent =
+      "Selección eliminada.";
+  }
+);
+
+canvas.addEventListener(
+  "pointerdown",
+  (event) => {
+    if (placing) {
+      createElement(event);
+      return;
+    }
+
+    selectElementAtPosition(event);
+  }
+);
 
 loadMap();
