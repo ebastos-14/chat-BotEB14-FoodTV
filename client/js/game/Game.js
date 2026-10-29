@@ -52,16 +52,7 @@ export class Game {
   }
 
   render() {
-    const viewport = {
-      x: 0,
-      y: 0,
-      width: this.map.background.width,
-      height: this.map.background.height,
-      canvasWidth: this.canvas.width,
-      canvasHeight: this.canvas.height
-    };
-
-    this.mapRenderer.render(viewport);
+    this.mapRenderer.render();
   }
 
   getAsset(id) {
