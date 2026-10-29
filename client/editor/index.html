@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Editor — chat-BotEB14-FoodTV</title>
+
+  <link rel="stylesheet" href="/editor/editor.css">
+</head>
+
+<body>
+
+  <header class="editor-header">
+    <div>
+      <h1>Editor de mapa</h1>
+      <p>chat-BotEB14-FoodTV</p>
+    </div>
+
+    <div id="editor-status">
+      Cargando mapa...
+    </div>
+  </header>
+
+  <main class="editor-layout">
+
+    <section class="map-panel">
+      <canvas id="editor-canvas"></canvas>
+    </section>
+
+    <aside class="editor-panel">
+
+      <h2>Elemento</h2>
+
+      <label>
+        Tipo
+        <select id="element-type">
+          <option value="spawn">Spawn</option>
+          <option value="interaction">Interacción</option>
+          <option value="zone">Zona</option>
+          <option value="station">Estación</option>
+          <option value="reception">Recepción</option>
+          <option value="table">Mesa</option>
+        </select>
+      </label>
+
+      <label>
+        ID
+        <input
+          id="element-id"
+          type="text"
+          placeholder="ej. spawn-player"
+        >
+      </label>
+
+      <button id="place-button">
+        Activar colocación
+      </button>
+
+      <button id="clear-button">
+        Limpiar selección
+      </button>
+
+      <h2>Coordenadas</h2>
+
+      <div class="coordinates">
+        <span>X: <strong id="coord-x">—</strong></span>
+        <span>Y: <strong id="coord-y">—</strong></span>
+      </div>
+
+      <h2>Normalizado</h2>
+
+      <div class="coordinates">
+        <span>X: <strong id="normalized-x">—</strong></span>
+        <span>Y: <strong id="normalized-y">—</strong></span>
+      </div>
+
+      <div id="editor-message"></div>
+
+    </aside>
+
+  </main>
+
+  <script type="module" src="/editor/editor.js"></script>
+
+</body>
+</html>
