@@ -1,9 +1,18 @@
 import { GAME_CONFIG } from "../config.js";
+import { assetRegistry } from "../assets/index.js";
 
 export class Game {
   constructor(canvas) {
+    if (!canvas) {
+      throw new Error("Game necesita un elemento canvas válido.");
+    }
+
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
+
+    if (!this.ctx) {
+      throw new Error("No se pudo obtener el contexto 2D del canvas.");
+    }
 
     this.running = false;
     this.lastTime = 0;
@@ -76,6 +85,10 @@ export class Game {
       width / 2,
       height / 2 + 20
     );
+  }
+
+  getAsset(id) {
+    return assetRegistry.get(id);
   }
 
   stop() {
