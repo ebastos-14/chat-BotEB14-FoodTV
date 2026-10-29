@@ -1,10 +1,10 @@
-# Chat'Donald's
+# chat-BotEB14-FoodTV
 
 Juego interactivo de restaurante pixel art con participación del chat de Twitch.
 
 ## Proyecto
 
-Chat'Donald's es un proyecto independiente de BotEB14-FoodTV.
+chat-BotEB14-FoodTV es un proyecto independiente de BotEB14-FoodTV.
 
 El objetivo es construir un restaurante virtual interactivo con:
 
