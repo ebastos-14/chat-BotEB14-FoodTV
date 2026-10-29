@@ -1,21 +1,18 @@
 import { GAME_CONFIG } from "../config.js";
 import { assetRegistry } from "../assets/index.js";
+import { MapRenderer } from "./MapRenderer.js";
+import mapDefinition from "../../assets/restaurant/map.json" with { type: "json" };
 
 export class Game {
   constructor(canvas) {
-    if (!canvas) {
-      throw new Error("Game necesita un elemento canvas válido.");
-    }
-
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
 
-    if (!this.ctx) {
-      throw new Error("No se pudo obtener el contexto 2D del canvas.");
-    }
-
     this.running = false;
     this.lastTime = 0;
+
+    this.map = mapDefinition;
+    this.mapRenderer = new MapRenderer(this.ctx, this.map);
 
     this.resize();
   }
@@ -51,40 +48,20 @@ export class Game {
   }
 
   update(deltaTime) {
-    // Próximamente:
-    // - entidades
-    // - movimiento
-    // - colisiones
-    // - interacción
-    // - estado sincronizado
     void deltaTime;
   }
 
   render() {
-    const { width, height } = this.canvas;
+    const viewport = {
+      x: 0,
+      y: 0,
+      width: this.map.background.width,
+      height: this.map.background.height,
+      canvasWidth: this.canvas.width,
+      canvasHeight: this.canvas.height
+    };
 
-    this.ctx.clearRect(0, 0, width, height);
-
-    this.ctx.fillStyle = "#111";
-    this.ctx.fillRect(0, 0, width, height);
-
-    this.ctx.fillStyle = "#fff";
-    this.ctx.font = "24px monospace";
-    this.ctx.textAlign = "center";
-
-    this.ctx.fillText(
-      "chat-BotEB14-FoodTV",
-      width / 2,
-      height / 2 - 20
-    );
-
-    this.ctx.font = "16px monospace";
-
-    this.ctx.fillText(
-      "Motor del juego inicializado",
-      width / 2,
-      height / 2 + 20
-    );
+    this.mapRenderer.render(viewport);
   }
 
   getAsset(id) {
