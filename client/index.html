@@ -16,6 +16,7 @@
   <title>chat-BotEB14-FoodTV</title>
 
   <link rel="stylesheet" href="/styles/main.css">
+  <link rel="stylesheet" href="/styles/game.css">
 </head>
 
 <body>
@@ -36,16 +37,13 @@
     </header>
 
     <section class="game-container">
-      <div class="game-placeholder">
-        <div class="pixel-building" aria-hidden="true">
-          🍔
-        </div>
-
-        <h2>Restaurante en construcción</h2>
-
-        <p>
-          El motor del restaurante se añadirá en las siguientes etapas.
-        </p>
+      <div class="game-frame">
+        <canvas
+          id="game-canvas"
+          width="1280"
+          height="720"
+          aria-label="Juego chat-BotEB14-FoodTV"
+        ></canvas>
       </div>
     </section>
   </main>
@@ -82,5 +80,7 @@
 
     checkServerStatus();
   </script>
+
+  <script type="module" src="/js/main.js"></script>
 </body>
 </html>
