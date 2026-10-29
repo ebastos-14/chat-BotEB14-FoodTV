@@ -136,3 +136,40 @@ body {
     flex-direction: column;
   }
 }
+
+.element-list {
+  max-height: 240px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  border: 1px solid #444;
+  background: #111;
+}
+
+.element-item {
+  padding: 10px;
+  border-bottom: 1px solid #333;
+  cursor: pointer;
+}
+
+.element-item:last-child {
+  border-bottom: 0;
+}
+
+.element-item:hover {
+  background: #292929;
+}
+
+.element-item.selected {
+  background: #3a3a3a;
+}
+
+.element-item strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.element-item span {
+  display: block;
+  color: #aaa;
+  font-size: 12px;
+}
