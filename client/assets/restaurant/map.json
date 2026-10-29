@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "mapId": "restaurant-main",
+  "name": "Restaurante principal",
+  "background": {
+    "asset": "/assets/restaurant/map-background.png",
+    "width": 1536,
+    "height": 1536
+  },
+  "entities": [],
+  "zones": [],
+  "spawns": [],
+  "interactions": []
+}
