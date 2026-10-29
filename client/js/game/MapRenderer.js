@@ -23,66 +23,81 @@ export class MapRenderer {
     this.image.src = this.mapDefinition.background.asset;
   }
 
-  render(viewport) {
+  render() {
     if (this.error) {
-      this.renderError(viewport);
+      this.renderError();
       return;
     }
 
     if (!this.loaded) {
-      this.renderLoading(viewport);
+      this.renderLoading();
       return;
     }
 
-    const { ctx } = this;
-    const background = this.mapDefinition.background;
+    const canvasWidth = this.ctx.canvas.width;
+    const canvasHeight = this.ctx.canvas.height;
 
-    ctx.drawImage(
+    const imageWidth = this.image.naturalWidth;
+    const imageHeight = this.image.naturalHeight;
+
+    const scale = Math.min(
+      canvasWidth / imageWidth,
+      canvasHeight / imageHeight
+    );
+
+    const drawWidth = imageWidth * scale;
+    const drawHeight = imageHeight * scale;
+
+    const offsetX = (canvasWidth - drawWidth) / 2;
+    const offsetY = (canvasHeight - drawHeight) / 2;
+
+    this.ctx.fillStyle = "#111";
+    this.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    this.ctx.imageSmoothingEnabled = false;
+
+    this.ctx.drawImage(
       this.image,
-      viewport.x,
-      viewport.y,
-      viewport.width,
-      viewport.height,
-      0,
-      0,
-      viewport.canvasWidth,
-      viewport.canvasHeight
+      offsetX,
+      offsetY,
+      drawWidth,
+      drawHeight
     );
-
-    void background;
   }
 
-  renderLoading(viewport) {
-    const { ctx } = this;
+  renderLoading() {
+    const canvasWidth = this.ctx.canvas.width;
+    const canvasHeight = this.ctx.canvas.height;
 
-    ctx.fillStyle = "#111";
-    ctx.fillRect(0, 0, viewport.canvasWidth, viewport.canvasHeight);
+    this.ctx.fillStyle = "#111";
+    this.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-    ctx.fillStyle = "#fff";
-    ctx.font = "20px monospace";
-    ctx.textAlign = "center";
+    this.ctx.fillStyle = "#fff";
+    this.ctx.font = "20px monospace";
+    this.ctx.textAlign = "center";
 
-    ctx.fillText(
+    this.ctx.fillText(
       "Cargando mapa...",
-      viewport.canvasWidth / 2,
-      viewport.canvasHeight / 2
+      canvasWidth / 2,
+      canvasHeight / 2
     );
   }
 
-  renderError(viewport) {
-    const { ctx } = this;
+  renderError() {
+    const canvasWidth = this.ctx.canvas.width;
+    const canvasHeight = this.ctx.canvas.height;
 
-    ctx.fillStyle = "#111";
-    ctx.fillRect(0, 0, viewport.canvasWidth, viewport.canvasHeight);
+    this.ctx.fillStyle = "#111";
+    this.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-    ctx.fillStyle = "#f44";
-    ctx.font = "18px monospace";
-    ctx.textAlign = "center";
+    this.ctx.fillStyle = "#f44";
+    this.ctx.font = "18px monospace";
+    this.ctx.textAlign = "center";
 
-    ctx.fillText(
+    this.ctx.fillText(
       this.error,
-      viewport.canvasWidth / 2,
-      viewport.canvasHeight / 2
+      canvasWidth / 2,
+      canvasHeight / 2
     );
   }
 }
