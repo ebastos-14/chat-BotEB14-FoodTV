@@ -1,1427 +1,1064 @@
+import {
+RAPTOR_PATH,
+RAPTOR_PROFILES,
+RAPTOR_SHEETS,
+isRaptorSheetAllowed
+} from "../js/config/raptors.js";
+
 const MAP_URL = "/assets/restaurant/map.json";
-
-const RAPTOR_PATH = "/assets/raptors/";
-
-const RAPTORS = {
-  "Raptor_Base.png": {
-    name: "Raptor Base",
-    profiles: {
-      lateral: {
-        x: 35,
-        y: 166,
-        width: 380,
-        height: 550
-      },
-      front: {
-        x: 435,
-        y: 166,
-        width: 525,
-        height: 550
-      },
-      back: {
-        x: 848,
-        y: 166,
-        width: 380,
-        height: 550
-      }
-    }
-  },
-
-  "Raptor_Vip.png": {
-    name: "Raptor VIP",
-    profiles: {}
-  },
-
-  "Raptor_Sub.png": {
-    name: "Raptor Sub",
-    profiles: {}
-  },
-
-  "Raptor_Mod.png": {
-    name: "Raptor Mod",
-    profiles: {}
-  },
-
-  "Raptor_EBastos14.png": {
-    name: "Raptor EBastos14",
-    profiles: {}
-  },
-
-  "Raptor_JaciiTV_1.png": {
-    name: "Raptor JaciiTV 1",
-    profiles: {}
-  },
-
-  "Raptor_JaciiTV_2.png": {
-    name: "Raptor JaciiTV 2",
-    profiles: {}
-  }
-};
-
 
 const canvas = document.querySelector("#editor-canvas");
 const ctx = canvas.getContext("2d");
 
+const spritePreview = document.querySelector("#sprite-preview");
+const spritePreviewCtx = spritePreview.getContext("2d");
+
 const statusElement = document.querySelector("#editor-status");
 const messageElement = document.querySelector("#editor-message");
+const elementList = document.querySelector("#element-list");
 
-const raptorSpriteSelect = document.querySelector("#raptor-sprite");
+const elementId = document.querySelector("#element-id");
+const elementType = document.querySelector("#element-type");
+const elementProfile = document.querySelector("#element-profile");
+const elementSheet = document.querySelector("#element-sheet");
+const elementX = document.querySelector("#element-x");
+const elementY = document.querySelector("#element-y");
+const elementScale = document.querySelector("#element-scale");
+const elementLayer = document.querySelector("#element-layer");
+const elementMirror = document.querySelector("#element-mirror");
 
-const profileButtons = document.querySelectorAll(
-  "[data-profile]"
-);
+const applyButton = document.querySelector("#apply-element");
+const deleteButton = document.querySelector("#delete-element");
+const resetButton = document.querySelector("#reset-element");
 
-const spritePreview = document.querySelector("#sprite-preview");
+const reloadButton = document.querySelector("#reload-map");
+const exportButton = document.querySelector("#export-json");
+const copyButton = document.querySelector("#copy-json");
 
-const spriteXInput = document.querySelector("#sprite-x");
-const spriteYInput = document.querySelector("#sprite-y");
-const spriteWidthInput = document.querySelector("#sprite-width");
-const spriteHeightInput = document.querySelector("#sprite-height");
-
-const spriteStartElement = document.querySelector("#sprite-start");
-const spriteSizeElement = document.querySelector("#sprite-size");
-
-const applySpriteSelectionButton = document.querySelector(
-  "#apply-sprite-selection"
-);
-
-const elementXInput = document.querySelector("#element-x");
-const elementYInput = document.querySelector("#element-y");
-
-const coordXElement = document.querySelector("#coord-x");
-const coordYElement = document.querySelector("#coord-y");
-
-const placeButton = document.querySelector("#place-button");
-
-const elementTypeSelect = document.querySelector(
-  "#element-type"
-);
-
-const elementIdInput = document.querySelector(
-  "#element-id"
-);
-
-const deleteButton = document.querySelector(
-  "#delete-button"
-);
-
-const clearButton = document.querySelector(
-  "#clear-button"
-);
-
-const elementList = document.querySelector(
-  "#element-list"
-);
-
-const exportButton = document.querySelector(
-  "#export-button"
-);
-
-const copyButton = document.querySelector(
-  "#copy-button"
-);
-
-const importButton = document.querySelector(
-  "#import-button"
-);
-
-const importFile = document.querySelector(
-  "#import-file"
-);
-
-const mapCoordinates = document.querySelector(
-  "#map-coordinates"
-);
-
+const jsonOutput = document.querySelector("#json-output");
 
 let mapDefinition = null;
-let mapImage = null;
+let selectedEntityId = null;
 
 const raptorImages = new Map();
 
-let selectedRaptor = "Raptor_Base.png";
-let selectedProfile = "front";
+const imageCache = new Map();
 
-let selectedElement = null;
-
-let elements = [];
-
-let currentSpriteSelection = {
-  x: 435,
-  y: 166,
-  width: 525,
-  height: 550
-};
-
-let placing = false;
-
-
-/* =========================================================
-   UTILIDADES
-   ========================================================= */
-
-function showMessage(message, type = "info") {
-  messageElement.textContent = message;
-
-  if (type === "error") {
-    messageElement.style.color = "#f66";
-  } else if (type === "success") {
-    messageElement.style.color = "#8f8";
-  } else {
-    messageElement.style.color = "#aaa";
-  }
+function setStatus(text) {
+statusElement.textContent = text;
 }
 
-
-function updateStatus(message) {
-  statusElement.textContent = message;
+function setMessage(text, isError = false) {
+messageElement.textContent = text;
+messageElement.classList.toggle("error", isError);
 }
 
-
-function getNumber(input) {
-  const value = Number(input.value);
-
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-
-  return value;
+function deepClone(value) {
+return JSON.parse(JSON.stringify(value));
 }
-
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
-
-/* =========================================================
-   CARGA DEL MAPA
-   ========================================================= */
 
 async function loadMap() {
-  const response = await fetch(MAP_URL, {
-    cache: "no-store"
-  });
+try {
+setStatus("Cargando mapa...");
+setMessage("");
 
-  if (!response.ok) {
-    throw new Error(
-      `No se pudo cargar ${MAP_URL}`
-    );
-  }
+const response = await fetch(
+  `${MAP_URL}?t=${Date.now()}`
+);
 
-  const map = await response.json();
-
-  if (!map.background?.asset) {
-    throw new Error(
-      "El mapa no contiene background.asset."
-    );
-  }
-
-  return map;
+if (!response.ok) {
+  throw new Error(
+    `No se pudo cargar map.json (${response.status}).`
+  );
 }
 
+const data = await response.json();
 
-async function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
+validateMap(data);
 
-    image.onload = () => {
-      resolve(image);
-    };
+mapDefinition = data;
 
-    image.onerror = () => {
-      reject(
-        new Error(`No se pudo cargar la imagen: ${src}`)
-      );
-    };
+canvas.width = mapDefinition.background.width;
+canvas.height = mapDefinition.background.height;
 
-    image.src = src;
-  });
+await preloadRaptorImages();
+
+render();
+renderElementList();
+
+if (mapDefinition.entities.length > 0) {
+  selectEntity(mapDefinition.entities[0].id);
+} else {
+  clearSelection();
 }
 
+setStatus(
+  `${mapDefinition.entities.length} elementos`
+);
 
-/* =========================================================
-   CARGA DE RAPTORS
-   ========================================================= */
+setMessage("Mapa cargado correctamente.");
 
-async function loadRaptorImages() {
-  const entries = Object.keys(RAPTORS);
+} catch (error) {
+console.error(error);
 
-  for (const filename of entries) {
-    const src = `${RAPTOR_PATH}${filename}`;
+setStatus("Error");
 
-    try {
-      const image = await loadImage(src);
+setMessage(
+  error.message || "No se pudo cargar el mapa.",
+  true
+);
 
-      raptorImages.set(filename, image);
-
-      console.log(
-        `Raptor cargado: ${filename}`,
-        image.naturalWidth,
-        image.naturalHeight
-      );
-
-    } catch (error) {
-      console.error(error);
-
-      showMessage(
-        `No se pudo cargar ${filename}`,
-        "error"
-      );
-    }
-  }
-
-  if (raptorImages.size === 0) {
-    throw new Error(
-      "No se pudo cargar ningún sprite de Raptor."
-    );
-  }
+}
 }
 
-
-/* =========================================================
-   PERFIL
-   ========================================================= */
-
-function selectProfile(profile) {
-  selectedProfile = profile;
-
-  profileButtons.forEach((button) => {
-    button.classList.toggle(
-      "active",
-      button.dataset.profile === profile
-    );
-  });
-
-  const raptor = RAPTORS[selectedRaptor];
-
-  const definition = raptor?.profiles?.[profile];
-
-  if (definition) {
-    setSpriteSelection(
-      definition.x,
-      definition.y,
-      definition.width,
-      definition.height
-    );
-  }
-
-  renderSpritePreview();
-
-  renderEditor();
+function validateMap(data) {
+if (!data || typeof data !== "object") {
+throw new Error("El mapa no es un objeto JSON válido.");
 }
 
+if (!data.background) {
+throw new Error(
+"El mapa no contiene background."
+);
+}
 
-/* =========================================================
-   SPRITE SELECTION
-   ========================================================= */
+if (
+!Number.isFinite(data.background.width) ||
+!Number.isFinite(data.background.height)
+) {
+throw new Error(
+"El tamaño del background no es válido."
+);
+}
 
-function setSpriteSelection(
-  x,
-  y,
+if (!Array.isArray(data.entities)) {
+throw new Error(
+"El mapa no contiene un array entities."
+);
+}
+
+const ids = new Set();
+
+for (const entity of data.entities) {
+validateEntity(entity);
+
+if (ids.has(entity.id)) {
+  throw new Error(
+    `ID duplicado: "${entity.id}".`
+  );
+}
+
+ids.add(entity.id);
+
+}
+}
+
+function validateEntity(entity) {
+if (!entity || typeof entity !== "object") {
+throw new Error(
+"Existe una entidad inválida."
+);
+}
+
+if (!entity.id || typeof entity.id !== "string") {
+throw new Error(
+"Una entidad no tiene un ID válido."
+);
+}
+
+if (entity.type !== "raptor") {
+throw new Error(
+"Tipo no soportado en el editor: "${entity.type}"."
+);
+}
+
+if (!RAPTOR_PROFILES[entity.profile]) {
+throw new Error(
+"Perfil inválido en "${entity.id}": "${entity.profile}"."
+);
+}
+
+if (!RAPTOR_SHEETS.includes(entity.sheet)) {
+throw new Error(
+"Spritesheet inválido en "${entity.id}": "${entity.sheet}"."
+);
+}
+
+if (
+!isRaptorSheetAllowed(
+entity.profile,
+entity.sheet
+)
+) {
+throw new Error(
+"El spritesheet "${entity.sheet}" no está permitido para el perfil "${entity.profile}" en "${entity.id}"."
+);
+}
+
+if (
+!entity.position ||
+!Number.isFinite(entity.position.x) ||
+!Number.isFinite(entity.position.y)
+) {
+throw new Error(
+"La posición de "${entity.id}" no es válida."
+);
+}
+
+if (
+!Number.isFinite(entity.scale) ||
+entity.scale <= 0
+) {
+throw new Error(
+"La escala de "${entity.id}" no es válida."
+);
+}
+
+if (!Number.isFinite(entity.layer)) {
+throw new Error(
+"El layer de "${entity.id}" no es válido."
+);
+}
+
+if (typeof entity.mirror !== "boolean") {
+throw new Error(
+"Mirror de "${entity.id}" debe ser true o false."
+);
+}
+}
+
+async function preloadRaptorImages() {
+const sheets = new Set();
+
+for (const entity of mapDefinition.entities) {
+if (entity.type === "raptor") {
+sheets.add(entity.sheet);
+}
+}
+
+for (const sheetName of sheets) {
+await loadRaptorImage(sheetName);
+}
+}
+
+function loadRaptorImage(sheetName) {
+if (raptorImages.has(sheetName)) {
+return Promise.resolve(
+raptorImages.get(sheetName)
+);
+}
+
+if (imageCache.has(sheetName)) {
+return imageCache.get(sheetName);
+}
+
+const promise = new Promise((resolve, reject) => {
+const image = new Image();
+
+image.onload = () => {
+  raptorImages.set(sheetName, image);
+  resolve(image);
+};
+
+image.onerror = () => {
+  reject(
+    new Error(
+      `No se pudo cargar ${sheetName}.`
+    )
+  );
+};
+
+image.src = `${RAPTOR_PATH}${sheetName}`;
+
+});
+
+imageCache.set(sheetName, promise);
+
+return promise;
+}
+
+function render() {
+if (!mapDefinition) {
+return;
+}
+
+ctx.clearRect(
+0,
+0,
+canvas.width,
+canvas.height
+);
+
+drawBackground();
+drawEntities();
+}
+
+function drawBackground() {
+const image = getBackgroundImage();
+
+if (!image) {
+return;
+}
+
+ctx.imageSmoothingEnabled = false;
+
+ctx.drawImage(
+image,
+0,
+0,
+canvas.width,
+canvas.height
+);
+}
+
+function getBackgroundImage() {
+const key = "map-background";
+
+if (imageCache.has(key)) {
+const cached = imageCache.get(key);
+
+if (cached instanceof HTMLImageElement) {
+  return cached;
+}
+
+}
+
+const image = new Image();
+
+image.onload = () => {
+imageCache.set(key, image);
+render();
+};
+
+image.onerror = () => {
+setMessage(
+"No se pudo cargar el fondo del mapa.",
+true
+);
+};
+
+image.src = mapDefinition.background.asset;
+
+imageCache.set(key, image);
+
+return null;
+}
+
+function drawEntities() {
+const entities = [...mapDefinition.entities];
+
+entities.sort(
+(a, b) => a.layer - b.layer
+);
+
+for (const entity of entities) {
+drawEntity(entity);
+}
+}
+
+function drawEntity(entity) {
+if (entity.type !== "raptor") {
+return;
+}
+
+const image = raptorImages.get(
+entity.sheet
+);
+
+if (!image) {
+return;
+}
+
+const profile =
+RAPTOR_PROFILES[entity.profile];
+
+if (!profile) {
+return;
+}
+
+const source = profile.source;
+
+const width =
+source.width * entity.scale;
+
+const height =
+source.height * entity.scale;
+
+const x = entity.position.x;
+const y = entity.position.y;
+
+ctx.save();
+
+ctx.imageSmoothingEnabled = false;
+
+if (entity.mirror) {
+ctx.translate(
+x + width,
+y
+);
+
+ctx.scale(-1, 1);
+
+ctx.drawImage(
+  image,
+  source.x,
+  source.y,
+  source.width,
+  source.height,
+  0,
+  0,
   width,
   height
+);
+
+} else {
+ctx.drawImage(
+image,
+source.x,
+source.y,
+source.width,
+source.height,
+x,
+y,
+width,
+height
+);
+}
+
+if (entity.id === selectedEntityId) {
+drawSelectionBox(
+x,
+y,
+width,
+height
+);
+}
+
+ctx.restore();
+}
+
+function drawSelectionBox(
+x,
+y,
+width,
+height
 ) {
-  spriteXInput.value = Math.round(x);
-  spriteYInput.value = Math.round(y);
-  spriteWidthInput.value = Math.round(width);
-  spriteHeightInput.value = Math.round(height);
+ctx.save();
 
-  currentSpriteSelection = {
-    x: Math.round(x),
-    y: Math.round(y),
-    width: Math.round(width),
-    height: Math.round(height)
-  };
+ctx.strokeStyle = "#ffffff";
+ctx.lineWidth = 2;
+ctx.setLineDash([6, 4]);
 
-  updateSpriteInfo();
+ctx.strokeRect(
+x,
+y,
+width,
+height
+);
+
+ctx.restore();
 }
 
+function renderElementList() {
+elementList.innerHTML = "";
 
-function readSpriteSelection() {
-  const image = raptorImages.get(selectedRaptor);
-
-  if (!image) {
-    throw new Error(
-      "El spritesheet seleccionado no está cargado."
-    );
-  }
-
-  const x = getNumber(spriteXInput);
-  const y = getNumber(spriteYInput);
-
-  const width = getNumber(
-    spriteWidthInput
-  );
-
-  const height = getNumber(
-    spriteHeightInput
-  );
-
-  if (x < 0 || y < 0) {
-    throw new Error(
-      "X e Y no pueden ser negativos."
-    );
-  }
-
-  if (width <= 0 || height <= 0) {
-    throw new Error(
-      "El ancho y el alto deben ser mayores que cero."
-    );
-  }
-
-  if (x + width > image.naturalWidth) {
-    throw new Error(
-      `El recorte supera el ancho del spritesheet. ` +
-      `Imagen: ${image.naturalWidth}px.`
-    );
-  }
-
-  if (y + height > image.naturalHeight) {
-    throw new Error(
-      `El recorte supera el alto del spritesheet. ` +
-      `Imagen: ${image.naturalHeight}px.`
-    );
-  }
-
-  return {
-    x,
-    y,
-    width,
-    height
-  };
+if (!mapDefinition) {
+return;
 }
 
+const entities = [...mapDefinition.entities];
 
-function updateSpriteInfo() {
-  const x = getNumber(spriteXInput);
-  const y = getNumber(spriteYInput);
-  const width = getNumber(spriteWidthInput);
-  const height = getNumber(spriteHeightInput);
+entities.sort(
+(a, b) => a.layer - b.layer
+);
 
-  spriteStartElement.textContent =
-    `${x}, ${y}`;
+for (const entity of entities) {
+const item = document.createElement("div");
 
-  spriteSizeElement.textContent =
-    `${width} × ${height}`;
+item.className = "element-item";
+
+if (entity.id === selectedEntityId) {
+  item.classList.add("selected");
 }
 
+item.innerHTML = `
+  <strong>${escapeHtml(entity.id)}</strong>
+  <span>
+    ${escapeHtml(entity.profile)}
+    · ${escapeHtml(entity.sheet)}
+    · layer ${entity.layer}
+  </span>
+`;
 
-/* =========================================================
-   PREVIEW DEL SPRITE
-   ========================================================= */
-
-function renderSpritePreview() {
-  const image = raptorImages.get(
-    selectedRaptor
-  );
-
-  if (!image) {
-    spritePreview.innerHTML =
-      "<span>Sprite no cargado</span>";
-
-    return;
+item.addEventListener(
+  "click",
+  () => {
+    selectEntity(entity.id);
   }
+);
 
-  const selection = currentSpriteSelection;
+elementList.appendChild(item);
 
-  const previewCanvas =
-    document.createElement("canvas");
-
-  const maxSize = 180;
-
-  const scale = Math.min(
-    maxSize / selection.width,
-    maxSize / selection.height
-  );
-
-  previewCanvas.width =
-    Math.max(
-      1,
-      Math.round(selection.width * scale)
-    );
-
-  previewCanvas.height =
-    Math.max(
-      1,
-      Math.round(selection.height * scale)
-    );
-
-  const previewContext =
-    previewCanvas.getContext("2d");
-
-  previewContext.imageSmoothingEnabled = false;
-
-  previewContext.drawImage(
-    image,
-
-    selection.x,
-    selection.y,
-    selection.width,
-    selection.height,
-
-    0,
-    0,
-    previewCanvas.width,
-    previewCanvas.height
-  );
-
-  spritePreview.innerHTML = "";
-
-  spritePreview.appendChild(
-    previewCanvas
-  );
+}
 }
 
+function selectEntity(id) {
+if (!mapDefinition) {
+return;
+}
 
-/* =========================================================
-   CAMBIO DE RAPTOR
-   ========================================================= */
+const entity =
+mapDefinition.entities.find(
+(item) => item.id === id
+);
 
-function changeRaptor() {
-  selectedRaptor =
-    raptorSpriteSelect.value;
+if (!entity) {
+return;
+}
 
-  const image =
-    raptorImages.get(selectedRaptor);
+selectedEntityId = entity.id;
 
-  if (!image) {
-    showMessage(
-      "El sprite seleccionado todavía no está disponible.",
-      "error"
+elementId.value = entity.id;
+elementType.value = entity.type;
+elementProfile.value = entity.profile;
+elementSheet.value = entity.sheet;
+
+elementX.value =
+entity.position.x;
+
+elementY.value =
+entity.position.y;
+
+elementScale.value =
+entity.scale;
+
+elementLayer.value =
+entity.layer;
+
+elementMirror.checked =
+entity.mirror;
+
+updateSheetOptions();
+updateSpritePreview();
+
+renderElementList();
+render();
+}
+
+function clearSelection() {
+selectedEntityId = null;
+
+elementId.value = "";
+elementX.value = "";
+elementY.value = "";
+elementScale.value = "";
+elementLayer.value = "";
+elementMirror.checked = false;
+
+renderElementList();
+render();
+}
+
+function updateSheetOptions() {
+const profileName =
+elementProfile.value;
+
+const profile =
+RAPTOR_PROFILES[profileName];
+
+if (!profile) {
+return;
+}
+
+const currentSheet =
+elementSheet.value;
+
+elementSheet.innerHTML = "";
+
+for (const sheetName of profile.allowedSheets) {
+const option =
+document.createElement("option");
+
+option.value = sheetName;
+option.textContent = sheetName;
+
+elementSheet.appendChild(option);
+
+}
+
+if (
+profile.allowedSheets.includes(
+currentSheet
+)
+) {
+elementSheet.value = currentSheet;
+} else {
+elementSheet.value =
+profile.allowedSheets[0];
+}
+
+updateSpritePreview();
+}
+
+function updateSpritePreview() {
+const sheetName =
+elementSheet.value;
+
+const profileName =
+elementProfile.value;
+
+const profile =
+RAPTOR_PROFILES[profileName];
+
+spritePreviewCtx.clearRect(
+0,
+0,
+spritePreview.width,
+spritePreview.height
+);
+
+if (!profile || !sheetName) {
+return;
+}
+
+const image =
+raptorImages.get(sheetName);
+
+if (!image) {
+loadRaptorImage(sheetName)
+.then(() => {
+updateSpritePreview();
+})
+.catch((error) => {
+console.error(error);
+});
+
+return;
+
+}
+
+const source = profile.source;
+
+const scale = Math.min(
+(spritePreview.width - 20) /
+source.width,
+
+(spritePreview.height - 20) /
+  source.height
+
+);
+
+const width =
+source.width * scale;
+
+const height =
+source.height * scale;
+
+const x =
+(spritePreview.width - width) / 2;
+
+const y =
+(spritePreview.height - height) / 2;
+
+spritePreviewCtx.imageSmoothingEnabled = false;
+
+spritePreviewCtx.drawImage(
+image,
+source.x,
+source.y,
+source.width,
+source.height,
+x,
+y,
+width,
+height
+);
+}
+
+function applyChanges() {
+if (!mapDefinition || !selectedEntityId) {
+setMessage(
+"Seleccione una ubicación primero.",
+true
+);
+
+return;
+
+}
+
+const entity =
+mapDefinition.entities.find(
+(item) => item.id === selectedEntityId
+);
+
+if (!entity) {
+setMessage(
+"No se encontró la ubicación seleccionada.",
+true
+);
+
+return;
+
+}
+
+const newId =
+elementId.value.trim();
+
+const profile =
+elementProfile.value;
+
+const sheet =
+elementSheet.value;
+
+const x =
+Number(elementX.value);
+
+const y =
+Number(elementY.value);
+
+const scale =
+Number(elementScale.value);
+
+const layer =
+Number(elementLayer.value);
+
+const mirror =
+elementMirror.checked;
+
+if (!newId) {
+setMessage(
+"El ID no puede estar vacío.",
+true
+);
+
+return;
+
+}
+
+if (
+mapDefinition.entities.some(
+(item) =>
+item.id === newId &&
+item !== entity
+)
+) {
+setMessage(
+"El ID "${newId}" ya existe.",
+true
+);
+
+return;
+
+}
+
+if (!RAPTOR_PROFILES[profile]) {
+setMessage(
+"El perfil seleccionado no es válido.",
+true
+);
+
+return;
+
+}
+
+if (!isRaptorSheetAllowed(profile, sheet)) {
+setMessage(
+""${sheet}" no está permitido para el perfil "${profile}".",
+true
+);
+
+return;
+
+}
+
+if (!Number.isFinite(x) || !Number.isFinite(y)) {
+setMessage(
+"La posición X/Y no es válida.",
+true
+);
+
+return;
+
+}
+
+if (!Number.isFinite(scale) || scale <= 0) {
+setMessage(
+"La escala debe ser mayor que cero.",
+true
+);
+
+return;
+
+}
+
+if (!Number.isFinite(layer)) {
+setMessage(
+"El layer no es válido.",
+true
+);
+
+return;
+
+}
+
+entity.id = newId;
+entity.profile = profile;
+entity.sheet = sheet;
+
+entity.position = {
+x,
+y
+};
+
+entity.scale = scale;
+entity.layer = layer;
+entity.mirror = mirror;
+
+selectedEntityId = newId;
+
+loadRaptorImage(sheet)
+.then(() => {
+render();
+updateSpritePreview();
+})
+.catch((error) => {
+console.error(error);
+});
+
+renderElementList();
+render();
+
+setMessage(
+"Se actualizó "${newId}"."
+);
+}
+
+function deleteSelectedEntity() {
+if (!mapDefinition || !selectedEntityId) {
+setMessage(
+"Seleccione una ubicación primero.",
+true
+);
+
+return;
+
+}
+
+const index =
+mapDefinition.entities.findIndex(
+(entity) =>
+entity.id === selectedEntityId
+);
+
+if (index === -1) {
+return;
+}
+
+const deletedId =
+mapDefinition.entities[index].id;
+
+mapDefinition.entities.splice(
+index,
+1
+);
+
+selectedEntityId = null;
+
+clearSelection();
+
+setStatus(
+"${mapDefinition.entities.length} elementos"
+);
+
+setMessage(
+"Se eliminó "${deletedId}"."
+);
+}
+
+function resetSelectedEntity() {
+if (!mapDefinition || !selectedEntityId) {
+return;
+}
+
+selectEntity(selectedEntityId);
+
+setMessage(
+"Se restauraron los valores del elemento."
+);
+}
+
+function exportJson() {
+if (!mapDefinition) {
+return;
+}
+
+const output =
+JSON.stringify(
+mapDefinition,
+null,
+2
+);
+
+jsonOutput.value = output;
+
+setMessage(
+"JSON generado correctamente."
+);
+}
+
+async function copyJson() {
+if (!mapDefinition) {
+return;
+}
+
+const output =
+JSON.stringify(
+mapDefinition,
+null,
+2
+);
+
+jsonOutput.value = output;
+
+try {
+await navigator.clipboard.writeText(
+output
+);
+
+setMessage(
+  "JSON copiado al portapapeles."
+);
+
+} catch (error) {
+console.error(error);
+
+setMessage(
+  "No se pudo copiar automáticamente. Puede copiarlo desde el cuadro de texto.",
+  true
+);
+
+}
+}
+
+function escapeHtml(value) {
+return String(value)
+.replaceAll("&", "&")
+.replaceAll("<", "<")
+.replaceAll(">", ">")
+.replaceAll('"', """)
+.replaceAll("'", "'");
+}
+
+elementProfile.addEventListener(
+"change",
+() => {
+updateSheetOptions();
+}
+);
+
+elementSheet.addEventListener(
+"change",
+() => {
+updateSpritePreview();
+}
+);
+
+applyButton.addEventListener(
+"click",
+applyChanges
+);
+
+deleteButton.addEventListener(
+"click",
+deleteSelectedEntity
+);
+
+resetButton.addEventListener(
+"click",
+resetSelectedEntity
+);
+
+reloadButton.addEventListener(
+"click",
+loadMap
+);
+
+exportButton.addEventListener(
+"click",
+exportJson
+);
+
+copyButton.addEventListener(
+"click",
+copyJson
+);
+
+canvas.addEventListener(
+"pointerdown",
+(event) => {
+if (!mapDefinition) {
+return;
+}
+
+const rect =
+  canvas.getBoundingClientRect();
+
+const scaleX =
+  canvas.width / rect.width;
+
+const scaleY =
+  canvas.height / rect.height;
+
+const x =
+  (event.clientX - rect.left) *
+  scaleX;
+
+const y =
+  (event.clientY - rect.top) *
+  scaleY;
+
+const entities =
+  [...mapDefinition.entities]
+    .sort(
+      (a, b) =>
+        b.layer - a.layer
     );
 
-    return;
+for (const entity of entities) {
+  if (entity.type !== "raptor") {
+    continue;
   }
 
   const profile =
-    RAPTORS[selectedRaptor]?.profiles?.[
-      selectedProfile
+    RAPTOR_PROFILES[
+      entity.profile
     ];
 
-  if (profile) {
-    setSpriteSelection(
-      profile.x,
-      profile.y,
-      profile.width,
-      profile.height
-    );
-  } else {
-    setSpriteSelection(
-      0,
-      0,
-      Math.min(100, image.naturalWidth),
-      Math.min(100, image.naturalHeight)
-    );
+  if (!profile) {
+    continue;
   }
-
-  renderSpritePreview();
-  renderEditor();
-
-  showMessage(
-    `${selectedRaptor} cargado.`,
-    "success"
-  );
-}
-
-
-/* =========================================================
-   ELEMENTOS DEL MAPA
-   ========================================================= */
-
-function createRaptorElement() {
-  const selection =
-    readSpriteSelection();
-
-  const x =
-    getNumber(elementXInput);
-
-  const y =
-    getNumber(elementYInput);
-
-  const id =
-    elementIdInput.value.trim();
-
-  if (!id) {
-    throw new Error(
-      "Debes indicar un ID para el Raptor."
-    );
-  }
-
-  if (
-    elements.some(
-      (element) => element.id === id
-    )
-  ) {
-    throw new Error(
-      `El ID "${id}" ya existe.`
-    );
-  }
-
-  return {
-    id,
-
-    type: "raptor",
-
-    sprite: {
-      sheet: selectedRaptor,
-
-      profile: selectedProfile,
-
-      source: {
-        x: selection.x,
-        y: selection.y,
-        width: selection.width,
-        height: selection.height
-      }
-    },
-
-    position: {
-      x,
-      y
-    },
-
-    scale: 1
-  };
-}
-
-
-function addElement() {
-  try {
-    const element =
-      createRaptorElement();
-
-    elements.push(element);
-
-    selectedElement = element;
-
-    renderElementList();
-    renderEditor();
-
-    showMessage(
-      `Raptor "${element.id}" colocado.`,
-      "success"
-    );
-
-  } catch (error) {
-    showMessage(
-      error.message,
-      "error"
-    );
-  }
-}
-
-
-function selectElement(element) {
-  selectedElement = element;
-
-  elementXInput.value =
-    element.position.x;
-
-  elementYInput.value =
-    element.position.y;
-
-  elementIdInput.value =
-    element.id;
-
-  if (element.sprite) {
-    selectedRaptor =
-      element.sprite.sheet;
-
-    selectedProfile =
-      element.sprite.profile;
-
-    raptorSpriteSelect.value =
-      selectedRaptor;
-
-    setSpriteSelection(
-      element.sprite.source.x,
-      element.sprite.source.y,
-      element.sprite.source.width,
-      element.sprite.source.height
-    );
-
-    renderSpritePreview();
-  }
-
-  renderElementList();
-  renderEditor();
-}
-
-
-function deleteSelected() {
-  if (!selectedElement) {
-    showMessage(
-      "No hay ningún elemento seleccionado."
-    );
-
-    return;
-  }
-
-  elements =
-    elements.filter(
-      (element) =>
-        element !== selectedElement
-    );
-
-  selectedElement = null;
-
-  renderElementList();
-  renderEditor();
-
-  showMessage(
-    "Elemento eliminado.",
-    "success"
-  );
-}
-
-
-function clearSelection() {
-  selectedElement = null;
-
-  renderElementList();
-  renderEditor();
-
-  showMessage(
-    "Selección eliminada."
-  );
-}
-
-
-/* =========================================================
-   LISTA DE ELEMENTOS
-   ========================================================= */
-
-function renderElementList() {
-  elementList.innerHTML = "";
-
-  if (elements.length === 0) {
-    elementList.innerHTML =
-      "<div class=\"element-item\">" +
-      "<span>No hay elementos.</span>" +
-      "</div>";
-
-    return;
-  }
-
-  elements.forEach((element) => {
-    const item =
-      document.createElement("div");
-
-    item.className =
-      "element-item";
-
-    if (element === selectedElement) {
-      item.classList.add("selected");
-    }
-
-    const title =
-      document.createElement("strong");
-
-    title.textContent =
-      element.id;
-
-    const details =
-      document.createElement("span");
-
-    if (element.sprite) {
-      details.textContent =
-        `${element.sprite.sheet} · ` +
-        `${element.sprite.profile} · ` +
-        `${element.position.x}, ` +
-        `${element.position.y}`;
-    } else {
-      details.textContent =
-        element.type;
-    }
-
-    item.appendChild(title);
-    item.appendChild(details);
-
-    item.addEventListener(
-      "click",
-      () => selectElement(element)
-    );
-
-    elementList.appendChild(item);
-  });
-}
-
-
-/* =========================================================
-   MAPA
-   ========================================================= */
-
-function renderMap() {
-  if (!mapImage) {
-    return;
-  }
-
-  ctx.clearRect(
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-
-  ctx.imageSmoothingEnabled = false;
-
-  ctx.drawImage(
-    mapImage,
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-}
-
-
-/* =========================================================
-   RAPTORS SOBRE EL MAPA
-   ========================================================= */
-
-function renderRaptor(element) {
-  const image =
-    raptorImages.get(
-      element.sprite.sheet
-    );
-
-  if (!image) {
-    return;
-  }
-
-  const source =
-    element.sprite.source;
-
-  const scale =
-    element.scale ?? 1;
 
   const width =
-    source.width * scale;
+    profile.source.width *
+    entity.scale;
 
   const height =
-    source.height * scale;
+    profile.source.height *
+    entity.scale;
 
-  ctx.imageSmoothingEnabled = false;
+  const inside =
+    x >= entity.position.x &&
+    x <= entity.position.x + width &&
+    y >= entity.position.y &&
+    y <= entity.position.y + height;
 
-  ctx.drawImage(
-    image,
-
-    source.x,
-    source.y,
-    source.width,
-    source.height,
-
-    element.position.x,
-    element.position.y,
-    width,
-    height
-  );
-
-  if (element === selectedElement) {
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 2;
-
-    ctx.strokeRect(
-      element.position.x,
-      element.position.y,
-      width,
-      height
-    );
-  }
-}
-
-
-/* =========================================================
-   RENDER COMPLETO
-   ========================================================= */
-
-function renderEditor() {
-  if (!mapImage) {
+  if (inside) {
+    selectEntity(entity.id);
     return;
   }
-
-  renderMap();
-
-  elements.forEach(
-    (element) => {
-      if (
-        element.type === "raptor" &&
-        element.sprite
-      ) {
-        renderRaptor(element);
-      }
-    }
-  );
 }
 
-
-/* =========================================================
-   COORDENADAS DEL MAPA
-   ========================================================= */
-
-function getCanvasCoordinates(event) {
-  const rect =
-    canvas.getBoundingClientRect();
-
-  const scaleX =
-    canvas.width / rect.width;
-
-  const scaleY =
-    canvas.height / rect.height;
-
-  return {
-    x:
-      (event.clientX - rect.left) *
-      scaleX,
-
-    y:
-      (event.clientY - rect.top) *
-      scaleY
-  };
 }
-
-
-function updateMapCoordinates(event) {
-  const position =
-    getCanvasCoordinates(event);
-
-  mapCoordinates.textContent =
-    `X: ${Math.round(position.x)} | ` +
-    `Y: ${Math.round(position.y)}`;
-
-  coordXElement.textContent =
-    Math.round(position.x);
-
-  coordYElement.textContent =
-    Math.round(position.y);
-}
-
-
-/* =========================================================
-   COLOCACIÓN CON EL MAPA
-   ========================================================= */
-
-function handleCanvasPointerDown(event) {
-  const position =
-    getCanvasCoordinates(event);
-
-  if (placing) {
-    elementXInput.value =
-      Math.round(position.x);
-
-    elementYInput.value =
-      Math.round(position.y);
-
-    addElement();
-
-    placing = false;
-
-    placeButton.textContent =
-      "Colocar Raptor";
-
-    return;
-  }
-
-  const clickedElement =
-    findElementAt(
-      position.x,
-      position.y
-    );
-
-  if (clickedElement) {
-    selectElement(clickedElement);
-  }
-}
-
-
-function findElementAt(x, y) {
-  for (
-    let index = elements.length - 1;
-    index >= 0;
-    index--
-  ) {
-    const element =
-      elements[index];
-
-    if (
-      element.type !== "raptor" ||
-      !element.sprite
-    ) {
-      continue;
-    }
-
-    const source =
-      element.sprite.source;
-
-    const width =
-      source.width *
-      (element.scale ?? 1);
-
-    const height =
-      source.height *
-      (element.scale ?? 1);
-
-    if (
-      x >= element.position.x &&
-      x <= element.position.x + width &&
-      y >= element.position.y &&
-      y <= element.position.y + height
-    ) {
-      return element;
-    }
-  }
-
-  return null;
-}
-
-
-/* =========================================================
-   EXPORTAR JSON
-   ========================================================= */
-
-function createMapExport() {
-  return {
-    ...mapDefinition,
-
-    entities: elements,
-
-    editor: {
-      version: 2
-    }
-  };
-}
-
-
-function exportJSON() {
-  const data =
-    createMapExport();
-
-  const json =
-    JSON.stringify(
-      data,
-      null,
-      2
-    );
-
-  const blob =
-    new Blob(
-      [json],
-      {
-        type: "application/json"
-      }
-    );
-
-  const url =
-    URL.createObjectURL(blob);
-
-  const link =
-    document.createElement("a");
-
-  link.href = url;
-  link.download = "map.json";
-
-  document.body.appendChild(link);
-
-  link.click();
-
-  link.remove();
-
-  URL.revokeObjectURL(url);
-
-  showMessage(
-    "JSON exportado.",
-    "success"
-  );
-}
-
-
-/* =========================================================
-   COPIAR JSON
-   ========================================================= */
-
-async function copyJSON() {
-  const json =
-    JSON.stringify(
-      createMapExport(),
-      null,
-      2
-    );
-
-  try {
-    await navigator.clipboard.writeText(
-      json
-    );
-
-    showMessage(
-      "JSON copiado al portapapeles.",
-      "success"
-    );
-
-  } catch (error) {
-    console.error(error);
-
-    showMessage(
-      "No se pudo copiar el JSON.",
-      "error"
-    );
-  }
-}
-
-
-/* =========================================================
-   IMPORTAR JSON
-   ========================================================= */
-
-function validateImportedMap(data) {
-  if (
-    !data ||
-    typeof data !== "object"
-  ) {
-    throw new Error(
-      "El JSON no es válido."
-    );
-  }
-
-  if (
-    !data.background ||
-    !data.background.asset
-  ) {
-    throw new Error(
-      "El JSON no contiene background.asset."
-    );
-  }
-
-  if (
-    !Array.isArray(data.entities)
-  ) {
-    throw new Error(
-      "El JSON no contiene entities."
-    );
-  }
-
-  for (const element of data.entities) {
-    if (!element.id) {
-      throw new Error(
-        "Existe un elemento sin ID."
-      );
-    }
-
-    if (
-      element.type === "raptor"
-    ) {
-      if (
-        !element.sprite ||
-        !element.sprite.sheet ||
-        !element.sprite.source
-      ) {
-        throw new Error(
-          `El Raptor "${element.id}" ` +
-          "no tiene una definición de sprite válida."
-        );
-      }
-
-      const source =
-        element.sprite.source;
-
-      if (
-        !Number.isFinite(source.x) ||
-        !Number.isFinite(source.y) ||
-        !Number.isFinite(source.width) ||
-        !Number.isFinite(source.height)
-      ) {
-        throw new Error(
-          `El Raptor "${element.id}" ` +
-          "tiene coordenadas de sprite inválidas."
-        );
-      }
-    }
-  }
-
-  return true;
-}
-
-
-async function importJSONFile(file) {
-  try {
-    const text =
-      await file.text();
-
-    const data =
-      JSON.parse(text);
-
-    validateImportedMap(data);
-
-    mapDefinition = data;
-
-    elements =
-      [...data.entities];
-
-    selectedElement = null;
-
-    if (mapDefinition.background?.asset) {
-      mapImage =
-        await loadImage(
-          mapDefinition.background.asset
-        );
-
-      canvas.width =
-        mapImage.naturalWidth;
-
-      canvas.height =
-        mapImage.naturalHeight;
-    }
-
-    renderElementList();
-    renderEditor();
-
-    showMessage(
-      "Mapa importado correctamente.",
-      "success"
-    );
-
-  } catch (error) {
-    console.error(error);
-
-    showMessage(
-      `Error al importar: ${error.message}`,
-      "error"
-    );
-  }
-}
-
-
-/* =========================================================
-   EVENTOS
-   ========================================================= */
-
-raptorSpriteSelect.addEventListener(
-  "change",
-  changeRaptor
 );
 
-
-profileButtons.forEach(
-  (button) => {
-    button.addEventListener(
-      "click",
-      () => {
-        selectProfile(
-          button.dataset.profile
-        );
-      }
-    );
-  }
-);
-
-
-[
-  spriteXInput,
-  spriteYInput,
-  spriteWidthInput,
-  spriteHeightInput
-].forEach(
-  (input) => {
-    input.addEventListener(
-      "input",
-      () => {
-        updateSpriteInfo();
-
-        try {
-          currentSpriteSelection =
-            readSpriteSelection();
-
-          renderSpritePreview();
-
-        } catch (error) {
-          // Mientras se escribe no mostramos
-          // un error permanente.
-        }
-      }
-    );
-  }
-);
-
-
-applySpriteSelectionButton.addEventListener(
-  "click",
-  () => {
-    try {
-      currentSpriteSelection =
-        readSpriteSelection();
-
-      renderSpritePreview();
-      renderEditor();
-
-      showMessage(
-        "Recorte aplicado correctamente.",
-        "success"
-      );
-
-    } catch (error) {
-      showMessage(
-        error.message,
-        "error"
-      );
-    }
-  }
-);
-
-
-placeButton.addEventListener(
-  "click",
-  () => {
-    placing = !placing;
-
-    if (placing) {
-      placeButton.textContent =
-        "Toca el mapa para colocar";
-
-      showMessage(
-        "Toca el lugar exacto del mapa donde quieres colocar el Raptor."
-      );
-
-    } else {
-      placeButton.textContent =
-        "Colocar Raptor";
-    }
-  }
-);
-
-
-deleteButton.addEventListener(
-  "click",
-  deleteSelected
-);
-
-
-clearButton.addEventListener(
-  "click",
-  clearSelection
-);
-
-
-exportButton.addEventListener(
-  "click",
-  exportJSON
-);
-
-
-copyButton.addEventListener(
-  "click",
-  copyJSON
-);
-
-
-importButton.addEventListener(
-  "click",
-  () => {
-    importFile.click();
-  }
-);
-
-
-importFile.addEventListener(
-  "change",
-  () => {
-    const file =
-      importFile.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    importJSONFile(file);
-
-    importFile.value = "";
-  }
-);
-
-
-canvas.addEventListener(
-  "pointermove",
-  updateMapCoordinates
-);
-
-
-canvas.addEventListener(
-  "pointerdown",
-  handleCanvasPointerDown
-);
-
-
-/* =========================================================
-   INICIO
-   ========================================================= */
-
-async function init() {
-  try {
-    updateStatus(
-      "Cargando mapa..."
-    );
-
-    mapDefinition =
-      await loadMap();
-
-    mapImage =
-      await loadImage(
-        mapDefinition.background.asset
-      );
-
-    canvas.width =
-      mapImage.naturalWidth;
-
-    canvas.height =
-      mapImage.naturalHeight;
-
-    updateStatus(
-      "Cargando Raptors..."
-    );
-
-    await loadRaptorImages();
-
-    if (
-      Array.isArray(
-        mapDefinition.entities
-      )
-    ) {
-      elements =
-        [...mapDefinition.entities];
-    }
-
-    setSpriteSelection(
-      435,
-      166,
-      525,
-      550
-    );
-
-    renderSpritePreview();
-    renderElementList();
-    renderEditor();
-
-    updateStatus(
-      "Editor listo"
-    );
-
-    showMessage(
-      `${raptorImages.size} sprites de Raptor cargados.`,
-      "success"
-    );
-
-  } catch (error) {
-    console.error(error);
-
-    updateStatus(
-      "Error"
-    );
-
-    showMessage(
-      error.message,
-      "error"
-    );
-  }
-}
-
-
-init();
+loadMap();
