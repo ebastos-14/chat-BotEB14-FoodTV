@@ -1,463 +1,217 @@
-<!DOCTYPE html>
-<html lang="es">
+<!DOCTYPE html><html lang="es">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8"><meta
+name="viewport"
+content="width=device-width, initial-scale=1.0"
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+«»
 
-  <title>Editor de mapa — chat-BotEB14-FoodTV</title>
-
-  <link rel="stylesheet" href="/editor/editor.css">
-</head>
-
-<body>
-
-  <header class="editor-header">
+  <title>Editor de mapa - chat-BotEB14-FoodTV</title>  <link rel="stylesheet" href="./editor.css">
+</head><body>  <header class="editor-header">
     <div>
       <h1>Editor de mapa</h1>
       <p>chat-BotEB14-FoodTV</p>
-    </div>
+    </div><div id="editor-status">
+  Cargando...
+</div>
 
-    <div id="editor-status">
-      Cargando mapa...
-    </div>
-  </header>
+  </header>  <main class="editor-layout"><section class="map-panel">
+  <canvas
+    id="editor-canvas"
+    width="1536"
+    height="1536"
+    aria-label="Editor visual del mapa"
+  ></canvas>
+</section>
 
-  <main class="editor-layout">
+<aside class="editor-panel">
 
-    <!-- =========================================================
-         MAPA
-         ========================================================= -->
+  <section>
+    <h2>Ubicaciones</h2>
 
-    <section class="map-panel">
+    <div
+      id="element-list"
+      class="element-list"
+    ></div>
+  </section>
 
-      <div class="map-toolbar">
+  <section>
+    <h2>Elemento seleccionado</h2>
 
-        <strong>Mapa</strong>
+    <label>
+      ID
 
-        <span id="map-coordinates">
-          X: — | Y: —
-        </span>
+      <input
+        id="element-id"
+        type="text"
+        autocomplete="off"
+      >
+    </label>
 
-      </div>
+    <label>
+      Tipo
+
+      <select id="element-type">
+        <option value="raptor">raptor</option>
+      </select>
+    </label>
+
+    <label>
+      Perfil
+
+      <select id="element-profile">
+        <option value="lateral">Lateral</option>
+        <option value="front">Front</option>
+        <option value="back">Back</option>
+      </select>
+    </label>
+
+    <label>
+      Raptor
+
+      <select id="element-sheet">
+        <option value="Raptor_Base.png">
+          Raptor_Base.png
+        </option>
+
+        <option value="Raptor_Vip.png">
+          Raptor_Vip.png
+        </option>
+
+        <option value="Raptor_Sub.png">
+          Raptor_Sub.png
+        </option>
+
+        <option value="Raptor_Mod.png">
+          Raptor_Mod.png
+        </option>
+
+        <option value="Raptor_EBastos14.png">
+          Raptor_EBastos14.png
+        </option>
+
+        <option value="Raptor_JaciiTV_1.png">
+          Raptor_JaciiTV_1.png
+        </option>
+
+        <option value="Raptor_JaciiTV_2.png">
+          Raptor_JaciiTV_2.png
+        </option>
+      </select>
+    </label>
+
+    <div class="sprite-preview">
+      <p>Vista previa</p>
 
       <canvas
-        id="editor-canvas"
-        aria-label="Mapa del restaurante"
+        id="sprite-preview"
+        width="220"
+        height="220"
       ></canvas>
+    </div>
 
-    </section>
+    <div class="field-row">
 
-
-    <!-- =========================================================
-         PANEL DEL EDITOR
-         ========================================================= -->
-
-    <aside class="editor-panel">
-
-      <!-- =======================================================
-           SPRITES RAPTOR
-           ======================================================= -->
-
-      <section class="editor-section">
-
-        <h2>Raptor</h2>
-
-        <label for="raptor-sprite">
-          Sprite
-        </label>
-
-        <select id="raptor-sprite">
-
-          <option value="Raptor_Base.png">
-            Raptor Base
-          </option>
-
-          <option value="Raptor_Vip.png">
-            Raptor VIP
-          </option>
-
-          <option value="Raptor_Sub.png">
-            Raptor Sub
-          </option>
-
-          <option value="Raptor_Mod.png">
-            Raptor Mod
-          </option>
-
-          <option value="Raptor_EBastos14.png">
-            Raptor EBastos14
-          </option>
-
-          <option value="Raptor_JaciiTV_1.png">
-            Raptor JaciiTV 1
-          </option>
-
-          <option value="Raptor_JaciiTV_2.png">
-            Raptor JaciiTV 2
-          </option>
-
-        </select>
-
-      </section>
-
-
-      <!-- =======================================================
-           PERFIL
-           ======================================================= -->
-
-      <section class="editor-section">
-
-        <h2>Perfil</h2>
-
-        <div class="profile-buttons">
-
-          <button
-            id="profile-lateral"
-            type="button"
-            data-profile="lateral"
-          >
-            Lateral
-          </button>
-
-          <button
-            id="profile-front"
-            type="button"
-            data-profile="front"
-          >
-            Frontal
-          </button>
-
-          <button
-            id="profile-back"
-            type="button"
-            data-profile="back"
-          >
-            Trasero
-          </button>
-
-        </div>
-
-        <div
-          id="sprite-preview"
-          class="sprite-preview"
-        >
-          <span>
-            Selecciona un perfil
-          </span>
-        </div>
-
-      </section>
-
-
-      <!-- =======================================================
-           RECORTE DEL SPRITESHEET
-           ======================================================= -->
-
-      <section class="editor-section">
-
-        <h2>Recorte del sprite</h2>
-
-        <p class="editor-help">
-          Define el punto inicial superior izquierdo y el tamaño
-          del área que ocupará el sprite.
-        </p>
-
-
-        <div class="coordinate-grid">
-
-          <label>
-            X inicial
-            <input
-              id="sprite-x"
-              type="number"
-              min="0"
-              step="1"
-              value="0"
-            >
-          </label>
-
-          <label>
-            Y inicial
-            <input
-              id="sprite-y"
-              type="number"
-              min="0"
-              step="1"
-              value="0"
-            >
-          </label>
-
-          <label>
-            Ancho
-            <input
-              id="sprite-width"
-              type="number"
-              min="1"
-              step="1"
-              value="1"
-            >
-          </label>
-
-          <label>
-            Alto
-            <input
-              id="sprite-height"
-              type="number"
-              min="1"
-              step="1"
-              value="1"
-            >
-          </label>
-
-        </div>
-
-
-        <div class="sprite-selection-info">
-
-          <span>
-            Inicio:
-            <strong id="sprite-start">
-              0, 0
-            </strong>
-          </span>
-
-          <span>
-            Tamaño:
-            <strong id="sprite-size">
-              1 × 1
-            </strong>
-          </span>
-
-        </div>
-
-
-        <button
-          id="apply-sprite-selection"
-          type="button"
-        >
-          Aplicar recorte
-        </button>
-
-      </section>
-
-
-      <!-- =======================================================
-           COLOCACIÓN EN MAPA
-           ======================================================= -->
-
-      <section class="editor-section">
-
-        <h2>Posición en mapa</h2>
-
-        <div class="coordinate-grid">
-
-          <label>
-            X
-            <input
-              id="element-x"
-              type="number"
-              step="1"
-              value="0"
-            >
-          </label>
-
-          <label>
-            Y
-            <input
-              id="element-y"
-              type="number"
-              step="1"
-              value="0"
-            >
-          </label>
-
-        </div>
-
-        <div class="coordinates">
-
-          <span>
-            X:
-            <strong id="coord-x">—</strong>
-          </span>
-
-          <span>
-            Y:
-            <strong id="coord-y">—</strong>
-          </span>
-
-        </div>
-
-        <button
-          id="place-button"
-          type="button"
-        >
-          Colocar Raptor
-        </button>
-
-      </section>
-
-
-      <!-- =======================================================
-           DATOS DEL ELEMENTO
-           ======================================================= -->
-
-      <section class="editor-section">
-
-        <h2>Elemento</h2>
-
-        <label for="element-type">
-          Tipo
-        </label>
-
-        <select id="element-type">
-
-          <option value="raptor">
-            Raptor
-          </option>
-
-          <option value="spawn">
-            Spawn
-          </option>
-
-          <option value="interaction">
-            Interacción
-          </option>
-
-          <option value="zone">
-            Zona
-          </option>
-
-          <option value="station">
-            Estación
-          </option>
-
-          <option value="reception">
-            Recepción
-          </option>
-
-          <option value="table">
-            Mesa
-          </option>
-
-        </select>
-
-
-        <label for="element-id">
-          ID
-        </label>
+      <label>
+        X
 
         <input
-          id="element-id"
-          type="text"
-          placeholder="ej. raptor-ebastos14-01"
+          id="element-x"
+          type="number"
+          step="1"
         >
+      </label>
 
-      </section>
-
-
-      <!-- =======================================================
-           ACCIONES
-           ======================================================= -->
-
-      <section class="editor-section">
-
-        <h2>Acciones</h2>
-
-        <button
-          id="delete-button"
-          type="button"
-        >
-          Eliminar seleccionado
-        </button>
-
-        <button
-          id="clear-button"
-          type="button"
-        >
-          Deseleccionar
-        </button>
-
-      </section>
-
-
-      <!-- =======================================================
-           ELEMENTOS DEL MAPA
-           ======================================================= -->
-
-      <section class="editor-section">
-
-        <h2>Elementos</h2>
-
-        <div
-          id="element-list"
-          class="element-list"
-        ></div>
-
-      </section>
-
-
-      <!-- =======================================================
-           JSON
-           ======================================================= -->
-
-      <section class="editor-section">
-
-        <h2>Mapa</h2>
-
-        <button
-          id="export-button"
-          type="button"
-        >
-          Exportar JSON
-        </button>
-
-        <button
-          id="copy-button"
-          type="button"
-        >
-          Copiar JSON
-        </button>
-
-        <button
-          id="import-button"
-          type="button"
-        >
-          Importar JSON
-        </button>
+      <label>
+        Y
 
         <input
-          id="import-file"
-          type="file"
-          accept=".json,application/json"
-          hidden
+          id="element-y"
+          type="number"
+          step="1"
         >
+      </label>
 
-      </section>
+    </div>
 
+    <label>
+      Escala
 
-      <!-- =======================================================
-           MENSAJES
-           ======================================================= -->
+      <input
+        id="element-scale"
+        type="number"
+        step="0.0001"
+        min="0.01"
+      >
+    </label>
 
-      <div
-        id="editor-message"
-        role="status"
-        aria-live="polite"
-      ></div>
+    <label>
+      Layer
 
-    </aside>
+      <input
+        id="element-layer"
+        type="number"
+        step="1"
+      >
+    </label>
 
-  </main>
+    <label class="checkbox-row">
+      <input
+        id="element-mirror"
+        type="checkbox"
+      >
 
+      Mirror horizontal
+    </label>
 
-  <script
+  </section>
+
+  <section class="button-section">
+
+    <button id="apply-element">
+      Aplicar cambios
+    </button>
+
+    <button id="delete-element">
+      Eliminar elemento
+    </button>
+
+    <button id="reset-element">
+      Restablecer selección
+    </button>
+
+  </section>
+
+  <section>
+
+    <h2>Archivo JSON</h2>
+
+    <button id="reload-map">
+      Recargar map.json
+    </button>
+
+    <button id="export-json">
+      Exportar JSON
+    </button>
+
+    <button id="copy-json">
+      Copiar JSON
+    </button>
+
+    <textarea
+      id="json-output"
+      spellcheck="false"
+      placeholder="Aquí aparecerá el JSON..."
+    ></textarea>
+
+  </section>
+
+  <div id="editor-message"></div>
+
+</aside>
+
+  </main>  <script
     type="module"
-    src="/editor/editor.js"
-  ></script>
-
-</body>
+    src="./editor.js"
+  ></script></body>
 </html>
