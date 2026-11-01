@@ -1,66 +1,105 @@
-import { MapRenderer } from "./MapRenderer.js";
 import { GAME_CONFIG } from "../config.js";
 import { assetRegistry } from "../assets/index.js";
-import { MapRenderer } from "./MapRenderer.js";
+import { raptorAssignments } from "../config/raptorAssignments.js";
 import mapDefinition from "../../assets/restaurant/map.json" with { type: "json" };
+import { MapRenderer } from "./MapRenderer.js";
 
 export class Game {
-  constructor(canvas) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext("2d");
+constructor(canvas) {
+this.canvas = canvas;
+this.ctx = canvas.getContext("2d");
 
-    this.running = false;
-    this.lastTime = 0;
+if (!this.ctx) {
+  throw new Error(
+    "No se pudo obtener el contexto 2D del canvas."
+  );
+}
 
-    this.map = mapDefinition;
-    this.mapRenderer = new MapRenderer(this.ctx, this.map);
+this.running = false;
+this.lastTime = 0;
 
-    this.resize();
-  }
+this.map = mapDefinition;
 
-  resize() {
-    this.canvas.width = GAME_CONFIG.canvas.width;
-    this.canvas.height = GAME_CONFIG.canvas.height;
-  }
+this.raptorAssignments = raptorAssignments;
 
-  start() {
-    if (this.running) {
-      return;
-    }
+this.mapRenderer = new MapRenderer(
+  this.ctx,
+  this.map,
+  this.raptorAssignments
+);
 
-    this.running = true;
-    this.lastTime = performance.now();
+this.resize();
 
-    requestAnimationFrame((time) => this.loop(time));
-  }
+}
 
-  loop(time) {
-    if (!this.running) {
-      return;
-    }
+resize() {
+this.canvas.width = GAME_CONFIG.canvas.width;
+this.canvas.height = GAME_CONFIG.canvas.height;
+}
 
-    const deltaTime = (time - this.lastTime) / 1000;
-    this.lastTime = time;
+start() {
+if (this.running) {
+return;
+}
 
-    this.update(deltaTime);
-    this.render();
+this.running = true;
+this.lastTime = performance.now();
 
-    requestAnimationFrame((nextTime) => this.loop(nextTime));
-  }
+requestAnimationFrame((time) => {
+  this.loop(time);
+});
 
-  update(deltaTime) {
-    void deltaTime;
-  }
+}
 
-  render() {
-    this.mapRenderer.render();
-  }
+loop(time) {
+if (!this.running) {
+return;
+}
 
-  getAsset(id) {
-    return assetRegistry.get(id);
-  }
+const deltaTime = (
+  time - this.lastTime
+) / 1000;
 
-  stop() {
-    this.running = false;
-  }
+this.lastTime = time;
+
+this.update(deltaTime);
+this.render();
+
+requestAnimationFrame((nextTime) => {
+  this.loop(nextTime);
+});
+
+}
+
+update(deltaTime) {
+void deltaTime;
+}
+
+render() {
+this.mapRenderer.render();
+}
+
+getAsset(id) {
+return assetRegistry.get(id);
+}
+
+getRaptorAssignment(locationId) {
+return this.raptorAssignments.get(locationId);
+}
+
+setRaptorAssignment(
+locationId,
+sheetName,
+profileName
+) {
+this.raptorAssignments.set(
+locationId,
+sheetName,
+profileName
+);
+}
+
+stop() {
+this.running = false;
+}
 }
