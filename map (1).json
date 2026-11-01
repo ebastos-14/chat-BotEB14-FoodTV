@@ -9,7 +9,7 @@
   },
   "entities": [
     {
-      "id": "Base_Espalda",
+      "id": "Back",
       "type": "raptor",
       "sprite": {
         "sheet": "Raptor_Base.png",
@@ -22,13 +22,13 @@
         }
       },
       "position": {
-        "x": 639,
-        "y": 716
+        "x": 288,
+        "y": 860
       },
-      "scale": 1
+      "scale": 0.488
     },
     {
-      "id": "Base_Lateral",
+      "id": "Lateral",
       "type": "raptor",
       "sprite": {
         "sheet": "Raptor_Base.png",
@@ -47,7 +47,7 @@
       "scale": 1
     },
     {
-      "id": "Base_Frente",
+      "id": "Front",
       "type": "raptor",
       "sprite": {
         "sheet": "Raptor_Base.png",
@@ -60,10 +60,10 @@
         }
       },
       "position": {
-        "x": 9,
-        "y": 9
+        "x": 634,
+        "y": 652
       },
-      "scale": 1
+      "scale": 0.5818
     }
   ],
   "zones": [],
