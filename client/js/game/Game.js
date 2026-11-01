@@ -1,3 +1,4 @@
+import { MapRenderer } from "./MapRenderer.js";
 import { GAME_CONFIG } from "../config.js";
 import { assetRegistry } from "../assets/index.js";
 import { MapRenderer } from "./MapRenderer.js";
