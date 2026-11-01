@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "mapId": "restaurant-main",
+  "name": "Restaurante principal",
+  "background": {
+    "asset": "/assets/restaurant/map-background.png",
+    "width": 1536,
+    "height": 1536
+  },
+  "entities": [
+    {
+      "id": "Base_Espalda",
+      "type": "raptor",
+      "sprite": {
+        "sheet": "Raptor_Base.png",
+        "profile": "back",
+        "source": {
+          "x": 850,
+          "y": 165,
+          "width": 380,
+          "height": 550
+        }
+      },
+      "position": {
+        "x": 639,
+        "y": 716
+      },
+      "scale": 1
+    },
+    {
+      "id": "Base_Lateral",
+      "type": "raptor",
+      "sprite": {
+        "sheet": "Raptor_Base.png",
+        "profile": "lateral",
+        "source": {
+          "x": 35,
+          "y": 165,
+          "width": 380,
+          "height": 550
+        }
+      },
+      "position": {
+        "x": 436,
+        "y": 246
+      },
+      "scale": 1
+    },
+    {
+      "id": "Base_Frente",
+      "type": "raptor",
+      "sprite": {
+        "sheet": "Raptor_Base.png",
+        "profile": "front",
+        "source": {
+          "x": 453,
+          "y": 166,
+          "width": 360,
+          "height": 550
+        }
+      },
+      "position": {
+        "x": 9,
+        "y": 9
+      },
+      "scale": 1
+    }
+  ],
+  "zones": [],
+  "spawns": [],
+  "interactions": [],
+  "editor": {
+    "version": 2
+  }
+}
