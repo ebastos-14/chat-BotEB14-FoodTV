@@ -7,31 +7,31 @@ const RAPTOR_PATH = "/assets/raptors/";
 const RAPTOR_PROFILES = {
   lateral: {
     source: {
-      x: 35,
-      y: 165,
-      width: 380,
-      height: 550
+      x: 40,
+      y: 170,
+      width: 375,
+      height: 545
     },
     allowedSheets: [
       "Raptor_Mod.png",
-      "Raptor_EBastos14.png",
-      "Raptor_JaciiTV_1.png",
-      "Raptor_JaciiTV_2.png"
+      "Raptor_Ebastos14.png",
+      "Raptor_Jaciitv_1.png",
+      "Raptor_Jaciitv_2.png"
     ]
   },
 
   front: {
     source: {
-      x: 453,
-      y: 165,
-      width: 360,
-      height: 550
+      x: 454,
+      y: 170,
+      width: 355,
+      height: 545
     },
     allowedSheets: [
       "Raptor_Mod.png",
-      "Raptor_EBastos14.png",
-      "Raptor_JaciiTV_1.png",
-      "Raptor_JaciiTV_2.png"
+      "Raptor_Ebastos14.png",
+      "Raptor_Jaciitv_1.png",
+      "Raptor_Jaciitv_2.png"
     ]
   },
 
@@ -39,17 +39,17 @@ const RAPTOR_PROFILES = {
     source: {
       x: 850,
       y: 165,
-      width: 380,
-      height: 550
+      width: 375,
+      height: 545
     },
     allowedSheets: [
       "Raptor_Base.png",
       "Raptor_Vip.png",
       "Raptor_Sub.png",
       "Raptor_Mod.png",
-      "Raptor_EBastos14.png",
-      "Raptor_JaciiTV_1.png",
-      "Raptor_JaciiTV_2.png"
+      "Raptor_Ebastos14.png",
+      "Raptor_Jaciitv_1.png",
+      "Raptor_Jaciitv_2.png"
     ]
   }
 };
