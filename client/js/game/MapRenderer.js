@@ -3,6 +3,9 @@ RAPTOR_PATH,
 getRaptorProfile
 } from "../config/raptors.js";
 
+const COUNTER_ASSET = "/assets/restaurant/Mostrador.png";
+const COUNTER_LAYER = 3;
+
 export class MapRenderer {
 constructor(ctx, mapDefinition, raptorAssignments) {
 this.ctx = ctx;
@@ -10,6 +13,10 @@ this.mapDefinition = mapDefinition;
 this.raptorAssignments = raptorAssignments;
 
 this.image = new Image();
+
+this.counterImage = new Image();
+this.counterLoaded = false;
+  
 this.loaded = false;
 this.error = null;
 
@@ -17,6 +24,7 @@ this.raptorImages = new Map();
 this.raptorErrors = new Map();
 
 this.loadMap();
+this.loadCounter();
 this.loadRaptorImages();
 
 }
@@ -33,6 +41,18 @@ this.image.onerror = () => {
 
 this.image.src = this.mapDefinition.background.asset;
 
+}
+  loadCounter() {
+  this.counterImage.onload = () => {
+    this.counterLoaded = true;
+  };
+
+  this.counterImage.onerror = () => {
+    this.error = "No se pudo cargar Mostrador.png.";
+    console.error(this.error);
+  };
+
+  this.counterImage.src = COUNTER_ASSET;
 }
 
 loadRaptorImages() {
@@ -92,19 +112,18 @@ this.loadRaptorImage(sheetName);
 }
 
 render() {
-if (this.error) {
-this.renderError();
-return;
-}
+  if (this.error) {
+    this.renderError();
+    return;
+  }
 
-if (!this.loaded) {
-  this.renderLoading();
-  return;
-}
+  if (!this.loaded || !this.counterLoaded) {
+    this.renderLoading();
+    return;
+  }
 
-this.renderBackground();
-this.renderEntities();
-
+  this.renderBackground();
+  this.renderEntities();
 }
 
 renderBackground() {
@@ -146,24 +165,25 @@ this.ctx.drawImage(
 }
 
 renderEntities() {
-const entities = [...(this.mapDefinition.entities ?? [])];
+  const entities = [...(this.mapDefinition.entities ?? [])];
 
-entities.sort((a, b) => {
-  const layerA = Number.isFinite(a.layer)
-    ? a.layer
-    : 0;
+  for (let layer = 2; layer <= 5; layer += 1) {
+    if (layer === COUNTER_LAYER) {
+      this.renderCounter();
+    }
 
-  const layerB = Number.isFinite(b.layer)
-    ? b.layer
-    : 0;
+    const layerEntities = entities.filter((entity) => {
+      const entityLayer = Number.isFinite(entity.layer)
+        ? entity.layer
+        : 2;
 
-  return layerA - layerB;
-});
+      return entityLayer === layer;
+    });
 
-for (const entity of entities) {
-  this.renderEntity(entity);
-}
-
+    for (const entity of layerEntities) {
+      this.renderEntity(entity);
+    }
+  }
 }
 
 renderEntity(entity) {
