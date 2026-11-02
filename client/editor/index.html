@@ -1,13 +1,14 @@
 <!DOCTYPE html><html lang="es">
 <head>
-  <meta charset="UTF-8"><meta
-name="viewport"
-content="width=device-width, initial-scale=1.0"
-
-«»
-
-  <title>Editor de mapa - chat-BotEB14-FoodTV</title>  <link rel="stylesheet" href="./editor.css">
-</head><body>  <header class="editor-header">
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  >
+  <title>Editor de mapa - chat-BotEB14-FoodTV</title>
+  <link rel="stylesheet" href="./editor.css">
+</head><body>
+  <header class="editor-header">
     <div>
       <h1>Editor de mapa</h1>
       <p>chat-BotEB14-FoodTV</p>
@@ -27,81 +28,43 @@ content="width=device-width, initial-scale=1.0"
 <aside class="editor-panel">
 
   <section>
-    <h2>Ubicaciones</h2>
+    <h2>Elemento</h2>
 
-    <div
-      id="element-list"
-      class="element-list"
-    ></div>
+    <label>
+      Elemento
+      <select id="element-select">
+        <option value="">Seleccionar...</option>
+      </select>
+    </label>
+
+    <div id="element-info" class="element-info">
+      Ningún elemento seleccionado.
+    </div>
   </section>
 
   <section>
-    <h2>Elemento seleccionado</h2>
+    <h2>Raptor</h2>
 
     <label>
-      ID
-
-      <input
-        id="element-id"
-        type="text"
-        autocomplete="off"
-      >
-    </label>
-
-    <label>
-      Tipo
-
-      <select id="element-type">
-        <option value="raptor">raptor</option>
+      Variante
+      <select id="raptor-sheet">
+        <option value="">Seleccionar...</option>
       </select>
     </label>
 
     <label>
       Perfil
-
-      <select id="element-profile">
+      <select id="raptor-profile">
         <option value="lateral">Lateral</option>
         <option value="front">Front</option>
         <option value="back">Back</option>
       </select>
     </label>
 
-    <label>
-      Raptor
-
-      <select id="element-sheet">
-        <option value="Raptor_Base.png">
-          Raptor_Base.png
-        </option>
-
-        <option value="Raptor_Vip.png">
-          Raptor_Vip.png
-        </option>
-
-        <option value="Raptor_Sub.png">
-          Raptor_Sub.png
-        </option>
-
-        <option value="Raptor_Mod.png">
-          Raptor_Mod.png
-        </option>
-
-        <option value="Raptor_EBastos14.png">
-          Raptor_EBastos14.png
-        </option>
-
-        <option value="Raptor_JaciiTV_1.png">
-          Raptor_JaciiTV_1.png
-        </option>
-
-        <option value="Raptor_JaciiTV_2.png">
-          Raptor_JaciiTV_2.png
-        </option>
-      </select>
-    </label>
-
     <div class="sprite-preview">
-      <p>Vista previa</p>
+      <div class="sprite-preview-title">
+        Vista previa
+      </div>
 
       <canvas
         id="sprite-preview"
@@ -109,34 +72,31 @@ content="width=device-width, initial-scale=1.0"
         height="220"
       ></canvas>
     </div>
+  </section>
 
-    <div class="field-row">
+  <section>
+    <h2>Transformación</h2>
 
-      <label>
-        X
+    <label>
+      X
+      <input
+        id="element-x"
+        type="number"
+        step="1"
+      >
+    </label>
 
-        <input
-          id="element-x"
-          type="number"
-          step="1"
-        >
-      </label>
-
-      <label>
-        Y
-
-        <input
-          id="element-y"
-          type="number"
-          step="1"
-        >
-      </label>
-
-    </div>
+    <label>
+      Y
+      <input
+        id="element-y"
+        type="number"
+        step="1"
+      >
+    </label>
 
     <label>
       Escala
-
       <input
         id="element-scale"
         type="number"
@@ -145,9 +105,16 @@ content="width=device-width, initial-scale=1.0"
       >
     </label>
 
+    <label class="checkbox-label">
+      <input
+        id="element-mirror"
+        type="checkbox"
+      >
+      Mirror horizontal
+    </label>
+
     <label>
       Layer
-
       <input
         id="element-layer"
         type="number"
@@ -155,40 +122,34 @@ content="width=device-width, initial-scale=1.0"
       >
     </label>
 
-    <label class="checkbox-row">
-      <input
-        id="element-mirror"
-        type="checkbox"
-      >
-
-      Mirror horizontal
-    </label>
-
-  </section>
-
-  <section class="button-section">
-
     <button id="apply-element">
       Aplicar cambios
     </button>
-
-    <button id="delete-element">
-      Eliminar elemento
-    </button>
-
-    <button id="reset-element">
-      Restablecer selección
-    </button>
-
   </section>
 
   <section>
+    <h2>Ubicaciones</h2>
 
-    <h2>Archivo JSON</h2>
+    <div
+      id="element-list"
+      class="element-list"
+    ></div>
 
-    <button id="reload-map">
-      Recargar map.json
+    <button id="add-element">
+      Añadir Raptor
     </button>
+
+    <button id="delete-element">
+      Eliminar seleccionado
+    </button>
+
+    <button id="reset-map">
+      Restaurar mapa
+    </button>
+  </section>
+
+  <section>
+    <h2>JSON</h2>
 
     <button id="export-json">
       Exportar JSON
@@ -198,20 +159,25 @@ content="width=device-width, initial-scale=1.0"
       Copiar JSON
     </button>
 
-    <textarea
-      id="json-output"
-      spellcheck="false"
-      placeholder="Aquí aparecerá el JSON..."
-    ></textarea>
+    <button id="import-json">
+      Importar JSON
+    </button>
 
+    <textarea
+      id="json-data"
+      rows="12"
+      spellcheck="false"
+      placeholder="Aquí aparecerá el JSON del mapa..."
+    ></textarea>
   </section>
 
-  <div id="editor-message"></div>
+  <div
+    id="editor-message"
+    role="status"
+    aria-live="polite"
+  ></div>
 
 </aside>
 
-  </main>  <script
-    type="module"
-    src="./editor.js"
-  ></script></body>
+  </main>  <script type="module" src="./editor.js"></script></body>
 </html>
