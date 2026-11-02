@@ -2,18 +2,18 @@
 "version": 1,
 "mapId": "restaurant-main",
 "assignments": {
-"Left_1": "Raptor_Base.png",
-"Left_2": "Raptor_Base.png",
-"Left_3": "Raptor_Base.png",
-"Left_4": "Raptor_Base.png",
-"Right_1": "Raptor_Base.png",
-"Right_2": "Raptor_Base.png",
-"Right_3": "Raptor_Base.png",
-"Right_4": "Raptor_Base.png",
-"Cashier": "Raptor_Base.png",
-"Client_1": "Raptor_Base.png",
-"Client_2": "Raptor_Base.png",
-"Client_3": "Raptor_Base.png",
-"Client_4": "Raptor_Base.png"
+"Left_1": "Raptor_Mod.png",
+"Left_2": "Raptor_Mod.png",
+"Left_3": "Raptor_Mod.png",
+"Left_4": "Raptor_Mod.png",
+"Right_1": "Raptor_Mod.png",
+"Right_2": "Raptor_Mod.png",
+"Right_3": "Raptor_Mod.png",
+"Right_4": "Raptor_Mod.png",
+"Cashier": "Raptor_Mod.png",
+"Client_1": "Raptor_Mod.png",
+"Client_2": "Raptor_Mod.png",
+"Client_3": "Raptor_Mod.png",
+"Client_4": "Raptor_Mod.png"
 }
 }
