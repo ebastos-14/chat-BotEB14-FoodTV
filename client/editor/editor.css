@@ -15,16 +15,20 @@ body {
 min-height: 100vh;
 }
 
+button,
+input,
+select,
+textarea {
+font: inherit;
+}
+
 .editor-header {
 min-height: 70px;
 padding: 12px 16px;
-
 display: flex;
 align-items: center;
 justify-content: space-between;
-
 gap: 16px;
-
 background: #1b1b1b;
 border-bottom: 1px solid #444;
 }
@@ -47,148 +51,152 @@ color: #8f8;
 
 .editor-layout {
 display: flex;
-
 min-height: calc(100vh - 70px);
 }
 
 .map-panel {
 flex: 1;
 min-width: 0;
-
 display: flex;
 justify-content: center;
 align-items: flex-start;
-
 padding: 12px;
-
 overflow: auto;
-
 background: #080808;
 }
 
 #editor-canvas {
 display: block;
-
-width: 100%;
-max-width: 1536px;
+width: min(100%, 1536px);
 height: auto;
-
 border: 2px solid #555;
-
 touch-action: none;
-
 image-rendering: pixelated;
 image-rendering: crisp-edges;
 }
 
 .editor-panel {
 width: 320px;
-
+flex-shrink: 0;
 padding: 16px;
-
 background: #202020;
 border-left: 1px solid #444;
-
 overflow-y: auto;
-}
-
-.editor-panel h2 {
-margin: 0 0 10px;
-
-font-size: 16px;
 }
 
 .editor-panel section {
 margin-bottom: 20px;
+padding-bottom: 16px;
+border-bottom: 1px solid #3a3a3a;
+}
+
+.editor-panel section:last-of-type {
+border-bottom: 0;
+}
+
+.editor-panel h2 {
+margin: 0 0 10px;
+font-size: 16px;
 }
 
 .editor-panel label {
 display: block;
-
 margin-bottom: 12px;
-
 font-size: 13px;
 }
 
 .editor-panel input,
 .editor-panel select,
-.editor-panel button,
-.editor-panel textarea {
+.editor-panel textarea,
+.editor-panel button {
 width: 100%;
-
 margin-top: 6px;
-
 padding: 10px;
-
 border: 1px solid #555;
 border-radius: 4px;
-
 background: #111;
 color: #fff;
-
-font: inherit;
 }
 
 .editor-panel textarea {
-min-height: 220px;
-
+min-height: 180px;
 resize: vertical;
-
 font-family: monospace;
 font-size: 12px;
 }
 
 .editor-panel button {
 cursor: pointer;
-
 margin-bottom: 8px;
+}
+
+.editor-panel button:hover {
+background: #292929;
 }
 
 .editor-panel button:active {
 transform: translateY(1px);
 }
 
-.field-row {
-display: flex;
-
-gap: 10px;
-}
-
-.field-row label {
-flex: 1;
-}
-
-.checkbox-row {
+.checkbox-label {
 display: flex !important;
-
 align-items: center;
-
 gap: 8px;
 }
 
-.checkbox-row input {
+.checkbox-label input {
 width: auto;
-
 margin: 0;
+}
+
+.element-info {
+padding: 10px;
+min-height: 38px;
+background: #111;
+border: 1px solid #444;
+color: #aaa;
+font-size: 12px;
+overflow-wrap: anywhere;
+}
+
+.sprite-preview {
+margin-top: 10px;
+padding: 8px;
+background: #111;
+border: 1px solid #444;
+}
+
+.sprite-preview-title {
+margin-bottom: 6px;
+color: #aaa;
+font-size: 12px;
+}
+
+#sprite-preview {
+display: block;
+width: 100%;
+max-width: 220px;
+height: auto;
+margin: 0 auto;
+background:
+repeating-conic-gradient(
+#222 0% 25%,
+#181818 0% 50%
+) 50% / 16px 16px;
+image-rendering: pixelated;
 }
 
 .element-list {
 max-height: 260px;
-
 overflow-y: auto;
-
-margin-bottom: 16px;
-
+margin-bottom: 12px;
 border: 1px solid #444;
-
 background: #111;
 }
 
 .element-item {
 padding: 10px;
-
 border-bottom: 1px solid #333;
-
 cursor: pointer;
 }
 
@@ -206,71 +214,22 @@ background: #3a3a3a;
 
 .element-item strong {
 display: block;
-
 margin-bottom: 4px;
 }
 
 .element-item span {
 display: block;
-
 color: #aaa;
-
-font-size: 11px;
-
-overflow-wrap: anywhere;
-}
-
-.sprite-preview {
-margin-bottom: 14px;
-
-padding: 8px;
-
-border: 1px solid #444;
-
-background: #111;
-}
-
-.sprite-preview p {
-margin: 0 0 8px;
-
-color: #aaa;
-
 font-size: 12px;
-}
-
-#sprite-preview {
-display: block;
-
-width: 100%;
-max-width: 220px;
-
-height: auto;
-
-margin: 0 auto;
-
-background: #181818;
-
-border: 1px solid #333;
-
-image-rendering: pixelated;
 }
 
 #editor-message {
 min-height: 40px;
-
 margin-top: 10px;
-
 color: #aaa;
-
 font-size: 13px;
-
 white-space: pre-wrap;
-
 overflow-wrap: anywhere;
-}
-
-#editor-message.error {
-color: #ff7777;
 }
 
 @media (max-width: 900px) {
@@ -278,42 +237,18 @@ color: #ff7777;
 flex-direction: column;
 }
 
+.map-panel {
+min-height: 60vh;
+}
+
 .editor-panel {
 width: 100%;
-
 border-left: 0;
 border-top: 1px solid #444;
-
 }
 
-.map-panel {
-min-height: 50vh;
-}
-
-#editor-canvas {
-max-width: none;
-
-width: 1536px;
-
-}
-}
-
-@media (max-width: 600px) {
 .editor-header {
 align-items: flex-start;
-
 flex-direction: column;
-
-}
-
-.editor-panel {
-padding: 12px;
-}
-
-.field-row {
-flex-direction: column;
-
-gap: 0;
-
 }
 }
