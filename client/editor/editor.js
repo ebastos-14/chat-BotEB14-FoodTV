@@ -1,8 +1,9 @@
 import {
 RAPTOR_PATH,
-RAPTOR_PROFILES,
 RAPTOR_SHEETS,
-isRaptorSheetAllowed
+RAPTOR_PROFILES,
+isRaptorSheetAllowed,
+getRaptorProfile
 } from "../js/config/raptors.js";
 
 const MAP_URL = "/assets/restaurant/map.json";
@@ -13,62 +14,95 @@ const ctx = canvas.getContext("2d");
 const spritePreview = document.querySelector("#sprite-preview");
 const spritePreviewCtx = spritePreview.getContext("2d");
 
-const statusElement = document.querySelector("#editor-status");
-const messageElement = document.querySelector("#editor-message");
+const elementSelect = document.querySelector("#element-select");
 const elementList = document.querySelector("#element-list");
 
-const elementId = document.querySelector("#element-id");
-const elementType = document.querySelector("#element-type");
-const elementProfile = document.querySelector("#element-profile");
-const elementSheet = document.querySelector("#element-sheet");
+const raptorSheet = document.querySelector("#raptor-sheet");
+const raptorProfile = document.querySelector("#raptor-profile");
+
 const elementX = document.querySelector("#element-x");
 const elementY = document.querySelector("#element-y");
 const elementScale = document.querySelector("#element-scale");
-const elementLayer = document.querySelector("#element-layer");
 const elementMirror = document.querySelector("#element-mirror");
+const elementLayer = document.querySelector("#element-layer");
 
-const applyButton = document.querySelector("#apply-element");
-const deleteButton = document.querySelector("#delete-element");
-const resetButton = document.querySelector("#reset-element");
+const elementInfo = document.querySelector("#element-info");
+const editorMessage = document.querySelector("#editor-message");
+const editorStatus = document.querySelector("#editor-status");
 
-const reloadButton = document.querySelector("#reload-map");
-const exportButton = document.querySelector("#export-json");
-const copyButton = document.querySelector("#copy-json");
+const jsonData = document.querySelector("#json-data");
 
-const jsonOutput = document.querySelector("#json-output");
+const applyElementButton = document.querySelector("#apply-element");
+const addElementButton = document.querySelector("#add-element");
+const deleteElementButton = document.querySelector("#delete-element");
+const resetMapButton = document.querySelector("#reset-map");
+const exportJsonButton = document.querySelector("#export-json");
+const copyJsonButton = document.querySelector("#copy-json");
+const importJsonButton = document.querySelector("#import-json");
 
 let mapDefinition = null;
-let selectedEntityId = null;
+let selectedElementId = null;
 
 const raptorImages = new Map();
 
-const imageCache = new Map();
+let pointerState = {
+active: false,
+moved: false,
+offsetX: 0,
+offsetY: 0
+};
+
+const DEFAULT_MAP = {
+version: 2,
+mapId: "restaurant-main",
+name: "Restaurante principal",
+background: {
+asset: "/assets/restaurant/map-background.png",
+width: 1536,
+height: 1536
+},
+entities: [],
+zones: [],
+spawns: [],
+interactions: []
+};
+
+const FALLBACK_SHEETS = [...RAPTOR_SHEETS];
+
+const backgroundImage = new Image();
+
+backgroundImage.onload = () => {
+draw();
+};
+
+backgroundImage.onerror = () => {
+showMessage("No se pudo cargar el fondo del mapa.");
+};
 
 function setStatus(text) {
-statusElement.textContent = text;
+editorStatus.textContent = text;
 }
 
-function setMessage(text, isError = false) {
-messageElement.textContent = text;
-messageElement.classList.toggle("error", isError);
+function showMessage(text, isError = false) {
+editorMessage.textContent = text;
+editorMessage.style.color = isError
+? "#f88"
+: "#aaa";
 }
 
-function deepClone(value) {
-return JSON.parse(JSON.stringify(value));
+function cloneMap(map) {
+return JSON.parse(JSON.stringify(map));
 }
 
 async function loadMap() {
 try {
-setStatus("Cargando mapa...");
-setMessage("");
-
-const response = await fetch(
-  `${MAP_URL}?t=${Date.now()}`
-);
+const response = await fetch(MAP_URL, {
+cache: "no-store"
+});
 
 if (!response.ok) {
   throw new Error(
-    `No se pudo cargar map.json (${response.status}).`
+    `HTTP ${response.status}`
   );
 }
 
@@ -76,84 +110,63 @@ const data = await response.json();
 
 validateMap(data);
 
-mapDefinition = data;
+mapDefinition = normalizeMap(data);
 
-canvas.width = mapDefinition.background.width;
-canvas.height = mapDefinition.background.height;
+backgroundImage.src =
+  mapDefinition.background.asset;
 
-await preloadRaptorImages();
+populateSheetSelect();
+refreshElementList();
 
-render();
-renderElementList();
-
-if (mapDefinition.entities.length > 0) {
-  selectEntity(mapDefinition.entities[0].id);
-} else {
-  clearSelection();
-}
-
-setStatus(
-  `${mapDefinition.entities.length} elementos`
+setStatus("Mapa cargado");
+showMessage(
+  `${mapDefinition.entities.length} elementos cargados.`
 );
 
-setMessage("Mapa cargado correctamente.");
+draw();
 
 } catch (error) {
 console.error(error);
 
-setStatus("Error");
+mapDefinition = cloneMap(DEFAULT_MAP);
 
-setMessage(
-  error.message || "No se pudo cargar el mapa.",
+backgroundImage.src =
+  mapDefinition.background.asset;
+
+populateSheetSelect();
+refreshElementList();
+
+setStatus("Error de carga");
+showMessage(
+  `No se pudo cargar map.json: ${error.message}`,
   true
 );
 
+draw();
+
 }
 }
 
-function validateMap(data) {
-if (!data || typeof data !== "object") {
-throw new Error("El mapa no es un objeto JSON válido.");
+function validateMap(map) {
+if (!map || typeof map !== "object") {
+throw new Error("El mapa no es un objeto válido.");
 }
 
-if (!data.background) {
+if (!map.background || typeof map.background !== "object") {
 throw new Error(
 "El mapa no contiene background."
 );
 }
 
-if (
-!Number.isFinite(data.background.width) ||
-!Number.isFinite(data.background.height)
-) {
+if (!Array.isArray(map.entities)) {
 throw new Error(
-"El tamaño del background no es válido."
-);
-}
-
-if (!Array.isArray(data.entities)) {
-throw new Error(
-"El mapa no contiene un array entities."
+"El mapa no contiene entities válidas."
 );
 }
 
 const ids = new Set();
 
-for (const entity of data.entities) {
-validateEntity(entity);
-
-if (ids.has(entity.id)) {
-  throw new Error(
-    `ID duplicado: "${entity.id}".`
-  );
-}
-
-ids.add(entity.id);
-
-}
-}
-
-function validateEntity(entity) {
+for (const entity of map.entities) {
 if (!entity || typeof entity !== "object") {
 throw new Error(
 "Existe una entidad inválida."
@@ -161,37 +174,30 @@ throw new Error(
 }
 
 if (!entity.id || typeof entity.id !== "string") {
-throw new Error(
-"Una entidad no tiene un ID válido."
-);
+  throw new Error(
+    "Existe una entidad sin ID válido."
+  );
 }
 
-if (entity.type !== "raptor") {
-throw new Error(
-"Tipo no soportado en el editor: "${entity.type}"."
-);
+if (ids.has(entity.id)) {
+  throw new Error(
+    `ID duplicado: ${entity.id}`
+  );
 }
 
+ids.add(entity.id);
+
+if (entity.type === "raptor") {
+  validateRaptorEntity(entity);
+}
+
+}
+}
+
+function validateRaptorEntity(entity) {
 if (!RAPTOR_PROFILES[entity.profile]) {
 throw new Error(
-"Perfil inválido en "${entity.id}": "${entity.profile}"."
-);
-}
-
-if (!RAPTOR_SHEETS.includes(entity.sheet)) {
-throw new Error(
-"Spritesheet inválido en "${entity.id}": "${entity.sheet}"."
-);
-}
-
-if (
-!isRaptorSheetAllowed(
-entity.profile,
-entity.sheet
-)
-) {
-throw new Error(
-"El spritesheet "${entity.sheet}" no está permitido para el perfil "${entity.profile}" en "${entity.id}"."
+"Perfil Raptor inválido en "${entity.id}": ${entity.profile}"
 );
 }
 
@@ -201,84 +207,700 @@ if (
 !Number.isFinite(entity.position.y)
 ) {
 throw new Error(
-"La posición de "${entity.id}" no es válida."
+"Posición inválida en "${entity.id}"."
 );
 }
 
-if (
-!Number.isFinite(entity.scale) ||
-entity.scale <= 0
-) {
+if (!Number.isFinite(entity.scale)) {
 throw new Error(
-"La escala de "${entity.id}" no es válida."
+"Escala inválida en "${entity.id}"."
 );
 }
 
 if (!Number.isFinite(entity.layer)) {
 throw new Error(
-"El layer de "${entity.id}" no es válido."
+"Layer inválido en "${entity.id}"."
 );
+
 }
 
 if (typeof entity.mirror !== "boolean") {
 throw new Error(
-"Mirror de "${entity.id}" debe ser true o false."
+"Mirror inválido en "${entity.id}"."
 );
 }
 }
 
-async function preloadRaptorImages() {
-const sheets = new Set();
+function normalizeMap(map) {
+const normalized = cloneMap(map);
 
-for (const entity of mapDefinition.entities) {
-if (entity.type === "raptor") {
-sheets.add(entity.sheet);
+normalized.version = Number.isFinite(normalized.version)
+? normalized.version
+: 2;
+
+normalized.mapId =
+normalized.mapId || "restaurant-main";
+
+normalized.name =
+normalized.name || "Restaurante principal";
+
+normalized.zones =
+Array.isArray(normalized.zones)
+? normalized.zones
+: [];
+
+normalized.spawns =
+Array.isArray(normalized.spawns)
+? normalized.spawns
+: [];
+
+normalized.interactions =
+Array.isArray(normalized.interactions)
+? normalized.interactions
+: [];
+
+normalized.entities =
+normalized.entities.map((entity) => ({
+...entity,
+type: entity.type || "raptor",
+profile: entity.profile || "lateral",
+position: {
+x: Number(entity.position?.x ?? 0),
+y: Number(entity.position?.y ?? 0)
+},
+scale: Number(entity.scale ?? 1),
+mirror: Boolean(entity.mirror),
+layer: Number(entity.layer ?? 0)
+}));
+
+return normalized;
+}
+
+function populateSheetSelect() {
+raptorSheet.innerHTML = "";
+
+for (const sheetName of FALLBACK_SHEETS) {
+const option =
+document.createElement("option");
+
+option.value = sheetName;
+option.textContent = sheetName;
+
+raptorSheet.appendChild(option);
+
 }
 }
 
-for (const sheetName of sheets) {
-await loadRaptorImage(sheetName);
-}
+function getSelectedEntity() {
+if (!mapDefinition || !selectedElementId) {
+return null;
 }
 
-function loadRaptorImage(sheetName) {
-if (raptorImages.has(sheetName)) {
-return Promise.resolve(
-raptorImages.get(sheetName)
+return (
+mapDefinition.entities.find(
+(entity) =>
+entity.id === selectedElementId
+) ?? null
 );
 }
 
-if (imageCache.has(sheetName)) {
-return imageCache.get(sheetName);
-}
+function refreshElementList() {
+elementList.innerHTML = "";
+elementSelect.innerHTML =
+'<option value="">Seleccionar...</option>';
 
-const promise = new Promise((resolve, reject) => {
-const image = new Image();
-
-image.onload = () => {
-  raptorImages.set(sheetName, image);
-  resolve(image);
-};
-
-image.onerror = () => {
-  reject(
-    new Error(
-      `No se pudo cargar ${sheetName}.`
-    )
-  );
-};
-
-image.src = `${RAPTOR_PATH}${sheetName}`;
-
-});
-
-imageCache.set(sheetName, promise);
-
-return promise;
-}
-
-function render() {
 if (!mapDefinition) {
+return;
+}
+
+const entities = mapDefinition.entities
+.filter(
+(entity) =>
+entity.type === "raptor"
+)
+.sort((a, b) =>
+a.id.localeCompare(b.id)
+);
+
+for (const entity of entities) {
+const option =
+document.createElement("option");
+
+option.value = entity.id;
+option.textContent = entity.id;
+
+elementSelect.appendChild(option);
+
+const item =
+  document.createElement("div");
+
+item.className = "element-item";
+
+if (entity.id === selectedElementId) {
+  item.classList.add("selected");
+}
+
+item.dataset.id = entity.id;
+
+item.innerHTML = `
+  <strong>${escapeHtml(entity.id)}</strong>
+  <span>
+    ${escapeHtml(entity.profile)}
+    · layer ${entity.layer}
+    · ${entity.position.x}, ${entity.position.y}
+  </span>
+`;
+
+item.addEventListener(
+  "click",
+  () => {
+    selectElement(entity.id);
+  }
+);
+
+elementList.appendChild(item);
+
+}
+
+elementSelect.value =
+selectedElementId ?? "";
+}
+
+function selectElement(id) {
+const entity =
+mapDefinition.entities.find(
+(item) => item.id === id
+);
+
+if (!entity) {
+selectedElementId = null;
+clearForm();
+refreshElementList();
+draw();
+return;
+}
+
+selectedElementId = id;
+
+loadEntityIntoForm(entity);
+
+refreshElementList();
+draw();
+
+showMessage(
+"Seleccionado: ${entity.id}"
+);
+}
+
+function loadEntityIntoForm(entity) {
+elementSelect.value = entity.id;
+
+raptorProfile.value =
+entity.profile;
+
+elementX.value =
+entity.position.x;
+
+elementY.value =
+entity.position.y;
+
+elementScale.value =
+entity.scale;
+
+elementMirror.checked =
+entity.mirror;
+
+elementLayer.value =
+entity.layer;
+
+updateSheetOptions();
+
+const currentSheet =
+getAssignment(entity);
+
+if (currentSheet) {
+raptorSheet.value =
+currentSheet;
+}
+
+elementInfo.textContent =
+"${entity.id} · ${entity.profile}";
+
+updateSpritePreview();
+}
+
+function clearForm() {
+elementSelect.value = "";
+
+elementX.value = "";
+elementY.value = "";
+elementScale.value = "";
+elementLayer.value = "";
+
+elementMirror.checked = false;
+
+elementInfo.textContent =
+"Ningún elemento seleccionado.";
+
+updateSheetOptions();
+clearSpritePreview();
+}
+
+function updateSheetOptions() {
+const profile =
+raptorProfile.value;
+
+const allowed =
+RAPTOR_PROFILES[profile]?.allowedSheets
+?? [];
+
+const current =
+raptorSheet.value;
+
+raptorSheet.innerHTML = "";
+
+for (const sheetName of allowed) {
+const option =
+document.createElement("option");
+
+option.value = sheetName;
+option.textContent = sheetName;
+
+raptorSheet.appendChild(option);
+
+}
+
+if (allowed.includes(current)) {
+raptorSheet.value = current;
+} else if (allowed.length > 0) {
+raptorSheet.value = allowed[0];
+}
+
+updateSpritePreview();
+}
+
+function getAssignment(entity) {
+if (!entity) {
+return null;
+}
+
+const sheet =
+entity._runtimeSheet;
+
+if (
+typeof sheet === "string" &&
+isRaptorSheetAllowed(
+entity.profile,
+sheet
+)
+) {
+return sheet;
+}
+
+return getDefaultSheet(entity.profile);
+}
+
+function getDefaultSheet(profile) {
+const allowed =
+RAPTOR_PROFILES[profile]?.allowedSheets
+?? [];
+
+return allowed[0] ?? null;
+}
+
+function applyChanges() {
+const entity =
+getSelectedEntity();
+
+if (!entity) {
+showMessage(
+"Seleccione primero una ubicación.",
+true
+);
+
+return;
+
+}
+
+const profile =
+raptorProfile.value;
+
+const x =
+Number(elementX.value);
+
+const y =
+Number(elementY.value);
+
+const scale =
+Number(elementScale.value);
+
+const layer =
+Number(elementLayer.value);
+
+const mirror =
+elementMirror.checked;
+
+if (!RAPTOR_PROFILES[profile]) {
+showMessage(
+"El perfil seleccionado no es válido.",
+true
+);
+
+return;
+
+}
+
+if (!Number.isFinite(x) ||
+!Number.isFinite(y)) {
+showMessage(
+"X e Y deben ser números válidos.",
+true
+);
+
+return;
+
+}
+
+if (!Number.isFinite(scale) ||
+scale <= 0) {
+showMessage(
+"La escala debe ser mayor que cero.",
+true
+);
+
+return;
+
+}
+
+if (!Number.isFinite(layer)) {
+showMessage(
+"El layer debe ser un número válido.",
+true
+);
+
+return;
+
+}
+
+const sheet =
+raptorSheet.value;
+
+if (
+!sheet ||
+!isRaptorSheetAllowed(
+profile,
+sheet
+)
+) {
+showMessage(
+"El Raptor "${sheet}" no está permitido para el perfil "${profile}".",
+true
+);
+
+return;
+
+}
+
+entity.profile = profile;
+
+entity.position = {
+x,
+y
+};
+
+entity.scale = scale;
+entity.mirror = mirror;
+entity.layer = layer;
+
+/*
+
+* La asignación del spritesheet es información
+* de runtime del editor.
+* 
+* NO se exporta a map.json.
+  */
+  entity._runtimeSheet = sheet;
+
+loadEntityIntoForm(entity);
+
+refreshElementList();
+draw();
+
+showMessage(
+"Cambios aplicados a "${entity.id}"."
+);
+}
+
+function addElement() {
+if (!mapDefinition) {
+return;
+}
+
+const existingIds =
+new Set(
+mapDefinition.entities.map(
+(entity) => entity.id
+)
+);
+
+let index = 1;
+let id = "Raptor_${index}";
+
+while (existingIds.has(id)) {
+index += 1;
+id = "Raptor_${index}";
+}
+
+const entity = {
+id,
+type: "raptor",
+profile: "lateral",
+position: {
+x: 100,
+y: 100
+},
+scale: 0.488,
+mirror: false,
+layer: 3,
+
+_runtimeSheet:
+  getDefaultSheet("lateral")
+
+};
+
+mapDefinition.entities.push(entity);
+
+selectedElementId = id;
+
+refreshElementList();
+loadEntityIntoForm(entity);
+draw();
+
+showMessage(
+"Nueva ubicación creada: ${id}"
+);
+}
+
+function deleteSelectedElement() {
+if (!mapDefinition || !selectedElementId) {
+showMessage(
+"Seleccione una ubicación para eliminar.",
+true
+);
+
+return;
+
+}
+
+const index =
+mapDefinition.entities.findIndex(
+(entity) =>
+entity.id === selectedElementId
+);
+
+if (index === -1) {
+return;
+}
+
+const deletedId =
+mapDefinition.entities[index].id;
+
+mapDefinition.entities.splice(
+index,
+1
+);
+
+selectedElementId = null;
+
+clearForm();
+refreshElementList();
+draw();
+
+showMessage(
+"Ubicación eliminada: ${deletedId}"
+);
+}
+
+function resetMap() {
+const confirmed =
+window.confirm(
+"¿Restaurar el mapa cargado originalmente? Se perderán los cambios actuales del editor."
+);
+
+if (!confirmed) {
+return;
+}
+
+loadMap();
+}
+
+function getExportMap() {
+const exported =
+cloneMap(mapDefinition);
+
+exported.entities =
+exported.entities.map(
+(entity) => {
+const cleanEntity = {
+id: entity.id,
+type: entity.type
+};
+
+    if (entity.type === "raptor") {
+      cleanEntity.profile =
+        entity.profile;
+
+      cleanEntity.position = {
+        x: entity.position.x,
+        y: entity.position.y
+      };
+
+      cleanEntity.scale =
+        entity.scale;
+
+      cleanEntity.mirror =
+        entity.mirror;
+
+      cleanEntity.layer =
+        entity.layer;
+    } else {
+      Object.assign(
+        cleanEntity,
+        entity
+      );
+    }
+
+    return cleanEntity;
+  }
+);
+
+return exported;
+}
+
+function exportJson() {
+if (!mapDefinition) {
+showMessage(
+"No hay mapa cargado.",
+true
+);
+
+return;
+
+}
+
+const exported =
+getExportMap();
+
+const json =
+JSON.stringify(
+exported,
+null,
+2
+);
+
+jsonData.value = json;
+
+showMessage(
+"JSON generado correctamente."
+);
+}
+
+async function copyJson() {
+if (!mapDefinition) {
+showMessage(
+"No hay mapa cargado.",
+true
+);
+
+return;
+
+}
+
+const exported =
+getExportMap();
+
+const json =
+JSON.stringify(
+exported,
+null,
+2
+);
+
+jsonData.value = json;
+
+try {
+await navigator.clipboard.writeText(
+json
+);
+
+showMessage(
+  "JSON copiado al portapapeles."
+);
+
+} catch (error) {
+console.error(error);
+
+showMessage(
+  "No se pudo copiar automáticamente. Puede copiar el texto manualmente.",
+  true
+);
+
+}
+}
+
+function importJson() {
+const text =
+jsonData.value.trim();
+
+if (!text) {
+showMessage(
+"Pegue primero un JSON.",
+true
+);
+
+return;
+
+}
+
+try {
+const imported =
+JSON.parse(text);
+
+validateMap(imported);
+
+mapDefinition =
+  normalizeMap(imported);
+
+selectedElementId = null;
+
+backgroundImage.src =
+  mapDefinition.background.asset;
+
+refreshElementList();
+clearForm();
+draw();
+
+showMessage(
+  "JSON importado correctamente."
+);
+
+setStatus(
+  "JSON importado"
+);
+
+} catch (error) {
+console.error(error);
+
+showMessage(
+  `JSON inválido: ${error.message}`,
+  true
+);
+
+}
+}
+
+function draw() {
+if (!ctx || !mapDefinition) {
 return;
 }
 
@@ -289,66 +911,34 @@ canvas.width,
 canvas.height
 );
 
-drawBackground();
-drawEntities();
-}
+ctx.fillStyle = "#111";
 
-function drawBackground() {
-const image = getBackgroundImage();
-
-if (!image) {
-return;
-}
-
-ctx.imageSmoothingEnabled = false;
-
-ctx.drawImage(
-image,
+ctx.fillRect(
 0,
 0,
 canvas.width,
 canvas.height
 );
-}
 
-function getBackgroundImage() {
-const key = "map-background";
+ctx.imageSmoothingEnabled = false;
 
-if (imageCache.has(key)) {
-const cached = imageCache.get(key);
-
-if (cached instanceof HTMLImageElement) {
-  return cached;
-}
-
-}
-
-const image = new Image();
-
-image.onload = () => {
-imageCache.set(key, image);
-render();
-};
-
-image.onerror = () => {
-setMessage(
-"No se pudo cargar el fondo del mapa.",
-true
+if (backgroundImage.complete &&
+backgroundImage.naturalWidth > 0) {
+ctx.drawImage(
+backgroundImage,
+0,
+0,
+mapDefinition.background.width,
+mapDefinition.background.height
 );
-};
-
-image.src = mapDefinition.background.asset;
-
-imageCache.set(key, image);
-
-return null;
 }
 
-function drawEntities() {
-const entities = [...mapDefinition.entities];
-
-entities.sort(
-(a, b) => a.layer - b.layer
+const entities =
+[...mapDefinition.entities]
+.sort(
+(a, b) =>
+Number(a.layer ?? 0) -
+Number(b.layer ?? 0)
 );
 
 for (const entity of entities) {
@@ -361,35 +951,54 @@ if (entity.type !== "raptor") {
 return;
 }
 
-const image = raptorImages.get(
-entity.sheet
+const sheet =
+getAssignment(entity);
+
+if (!sheet) {
+return;
+}
+
+const image =
+raptorImages.get(sheet);
+
+if (!image ||
+!image.complete ||
+image.naturalWidth <= 0) {
+loadRaptorImage(sheet);
+return;
+}
+
+let profile;
+
+try {
+profile =
+getRaptorProfile(
+entity.profile
 );
-
-if (!image) {
+} catch (error) {
+console.error(error);
 return;
 }
 
-const profile =
-RAPTOR_PROFILES[entity.profile];
+const source =
+profile.source;
 
-if (!profile) {
-return;
-}
-
-const source = profile.source;
+const scale =
+Number(entity.scale);
 
 const width =
-source.width * entity.scale;
+source.width * scale;
 
 const height =
-source.height * entity.scale;
+source.height * scale;
 
-const x = entity.position.x;
-const y = entity.position.y;
+const x =
+Number(entity.position.x);
+
+const y =
+Number(entity.position.y);
 
 ctx.save();
-
-ctx.imageSmoothingEnabled = false;
 
 if (entity.mirror) {
 ctx.translate(
@@ -397,7 +1006,10 @@ x + width,
 y
 );
 
-ctx.scale(-1, 1);
+ctx.scale(
+  -1,
+  1
+);
 
 ctx.drawImage(
   image,
@@ -425,27 +1037,31 @@ height
 );
 }
 
-if (entity.id === selectedEntityId) {
+ctx.restore();
+
+if (entity.id === selectedElementId) {
 drawSelectionBox(
-x,
-y,
+entity,
 width,
 height
 );
 }
-
-ctx.restore();
 }
 
 function drawSelectionBox(
-x,
-y,
+entity,
 width,
 height
 ) {
+const x =
+Number(entity.position.x);
+
+const y =
+Number(entity.position.y);
+
 ctx.save();
 
-ctx.strokeStyle = "#ffffff";
+ctx.strokeStyle = "#fff";
 ctx.lineWidth = 2;
 ctx.setLineDash([6, 4]);
 
@@ -459,157 +1075,42 @@ height
 ctx.restore();
 }
 
-function renderElementList() {
-elementList.innerHTML = "";
-
-if (!mapDefinition) {
+function loadRaptorImage(sheetName) {
+if (raptorImages.has(sheetName)) {
 return;
 }
 
-const entities = [...mapDefinition.entities];
+const image =
+new Image();
 
-entities.sort(
-(a, b) => a.layer - b.layer
+image.onload = () => {
+raptorImages.set(
+sheetName,
+image
 );
 
-for (const entity of entities) {
-const item = document.createElement("div");
-
-item.className = "element-item";
-
-if (entity.id === selectedEntityId) {
-  item.classList.add("selected");
-}
-
-item.innerHTML = `
-  <strong>${escapeHtml(entity.id)}</strong>
-  <span>
-    ${escapeHtml(entity.profile)}
-    · ${escapeHtml(entity.sheet)}
-    · layer ${entity.layer}
-  </span>
-`;
-
-item.addEventListener(
-  "click",
-  () => {
-    selectEntity(entity.id);
-  }
-);
-
-elementList.appendChild(item);
-
-}
-}
-
-function selectEntity(id) {
-if (!mapDefinition) {
-return;
-}
-
-const entity =
-mapDefinition.entities.find(
-(item) => item.id === id
-);
-
-if (!entity) {
-return;
-}
-
-selectedEntityId = entity.id;
-
-elementId.value = entity.id;
-elementType.value = entity.type;
-elementProfile.value = entity.profile;
-elementSheet.value = entity.sheet;
-
-elementX.value =
-entity.position.x;
-
-elementY.value =
-entity.position.y;
-
-elementScale.value =
-entity.scale;
-
-elementLayer.value =
-entity.layer;
-
-elementMirror.checked =
-entity.mirror;
-
-updateSheetOptions();
+draw();
 updateSpritePreview();
 
-renderElementList();
-render();
-}
+};
 
-function clearSelection() {
-selectedEntityId = null;
+image.onerror = () => {
+showMessage(
+"No se pudo cargar ${sheetName}.",
+true
+);
+};
 
-elementId.value = "";
-elementX.value = "";
-elementY.value = "";
-elementScale.value = "";
-elementLayer.value = "";
-elementMirror.checked = false;
+image.src =
+"${RAPTOR_PATH}${sheetName}";
 
-renderElementList();
-render();
-}
-
-function updateSheetOptions() {
-const profileName =
-elementProfile.value;
-
-const profile =
-RAPTOR_PROFILES[profileName];
-
-if (!profile) {
-return;
-}
-
-const currentSheet =
-elementSheet.value;
-
-elementSheet.innerHTML = "";
-
-for (const sheetName of profile.allowedSheets) {
-const option =
-document.createElement("option");
-
-option.value = sheetName;
-option.textContent = sheetName;
-
-elementSheet.appendChild(option);
-
-}
-
-if (
-profile.allowedSheets.includes(
-currentSheet
-)
-) {
-elementSheet.value = currentSheet;
-} else {
-elementSheet.value =
-profile.allowedSheets[0];
-}
-
-updateSpritePreview();
+raptorImages.set(
+sheetName,
+image
+);
 }
 
 function updateSpritePreview() {
-const sheetName =
-elementSheet.value;
-
-const profileName =
-elementProfile.value;
-
-const profile =
-RAPTOR_PROFILES[profileName];
-
 spritePreviewCtx.clearRect(
 0,
 0,
@@ -617,42 +1118,53 @@ spritePreview.width,
 spritePreview.height
 );
 
-if (!profile || !sheetName) {
+const profile =
+raptorProfile.value;
+
+const sheet =
+raptorSheet.value;
+
+if (!profile || !sheet) {
 return;
 }
 
 const image =
-raptorImages.get(sheetName);
+raptorImages.get(sheet);
 
-if (!image) {
-loadRaptorImage(sheetName)
-.then(() => {
-updateSpritePreview();
-})
-.catch((error) => {
-console.error(error);
-});
-
+if (!image ||
+!image.complete ||
+image.naturalWidth <= 0) {
+loadRaptorImage(sheet);
 return;
-
 }
 
-const source = profile.source;
+const definition =
+getRaptorProfile(profile);
 
-const scale = Math.min(
-(spritePreview.width - 20) /
-source.width,
+const source =
+definition.source;
 
-(spritePreview.height - 20) /
-  source.height
+const padding = 10;
 
+const availableWidth =
+spritePreview.width -
+padding * 2;
+
+const availableHeight =
+spritePreview.height -
+padding * 2;
+
+const previewScale =
+Math.min(
+availableWidth / source.width,
+availableHeight / source.height
 );
 
 const width =
-source.width * scale;
+source.width * previewScale;
 
 const height =
-source.height * scale;
+source.height * previewScale;
 
 const x =
 (spritePreview.width - width) / 2;
@@ -660,7 +1172,8 @@ const x =
 const y =
 (spritePreview.height - height) / 2;
 
-spritePreviewCtx.imageSmoothingEnabled = false;
+spritePreviewCtx.imageSmoothingEnabled =
+false;
 
 spritePreviewCtx.drawImage(
 image,
@@ -675,270 +1188,273 @@ height
 );
 }
 
-function applyChanges() {
-if (!mapDefinition || !selectedEntityId) {
-setMessage(
-"Seleccione una ubicación primero.",
-true
+function getCanvasPosition(event) {
+const rect =
+canvas.getBoundingClientRect();
+
+const scaleX =
+canvas.width / rect.width;
+
+const scaleY =
+canvas.height / rect.height;
+
+return {
+x:
+(event.clientX - rect.left) *
+scaleX,
+
+y:
+  (event.clientY - rect.top) *
+  scaleY
+
+};
+}
+
+function findEntityAtPosition(x, y) {
+if (!mapDefinition) {
+return null;
+}
+
+const entities =
+[...mapDefinition.entities]
+.filter(
+(entity) =>
+entity.type === "raptor"
+)
+.sort(
+(a, b) =>
+Number(b.layer ?? 0) -
+Number(a.layer ?? 0)
 );
 
-return;
+for (const entity of entities) {
+const sheet =
+getAssignment(entity);
 
+if (!sheet) {
+  continue;
+}
+
+const profile =
+  getRaptorProfile(
+    entity.profile
+  );
+
+const width =
+  profile.source.width *
+  entity.scale;
+
+const height =
+  profile.source.height *
+  entity.scale;
+
+const ex =
+  Number(entity.position.x);
+
+const ey =
+  Number(entity.position.y);
+
+if (
+  x >= ex &&
+  x <= ex + width &&
+  y >= ey &&
+  y <= ey + height
+) {
+  return entity;
+}
+
+}
+
+return null;
+}
+
+canvas.addEventListener(
+"pointerdown",
+(event) => {
+const position =
+getCanvasPosition(event);
+
+const entity =
+  findEntityAtPosition(
+    position.x,
+    position.y
+  );
+
+if (!entity) {
+  return;
+}
+
+selectElement(entity.id);
+
+pointerState.active = true;
+pointerState.moved = false;
+
+pointerState.offsetX =
+  position.x -
+  entity.position.x;
+
+pointerState.offsetY =
+  position.y -
+  entity.position.y;
+
+canvas.setPointerCapture(
+  event.pointerId
+);
+
+}
+);
+
+canvas.addEventListener(
+"pointermove",
+(event) => {
+if (!pointerState.active) {
+return;
 }
 
 const entity =
-mapDefinition.entities.find(
-(item) => item.id === selectedEntityId
-);
+  getSelectedEntity();
 
 if (!entity) {
-setMessage(
-"No se encontró la ubicación seleccionada.",
-true
-);
-
-return;
-
+  return;
 }
 
-const newId =
-elementId.value.trim();
+const position =
+  getCanvasPosition(event);
 
-const profile =
-elementProfile.value;
+entity.position.x =
+  Math.round(
+    position.x -
+    pointerState.offsetX
+  );
 
-const sheet =
-elementSheet.value;
+entity.position.y =
+  Math.round(
+    position.y -
+    pointerState.offsetY
+  );
 
-const x =
-Number(elementX.value);
+elementX.value =
+  entity.position.x;
 
-const y =
-Number(elementY.value);
+elementY.value =
+  entity.position.y;
 
-const scale =
-Number(elementScale.value);
+pointerState.moved = true;
 
-const layer =
-Number(elementLayer.value);
-
-const mirror =
-elementMirror.checked;
-
-if (!newId) {
-setMessage(
-"El ID no puede estar vacío.",
-true
-);
-
-return;
+draw();
+refreshElementList();
 
 }
-
-if (
-mapDefinition.entities.some(
-(item) =>
-item.id === newId &&
-item !== entity
-)
-) {
-setMessage(
-"El ID "${newId}" ya existe.",
-true
 );
 
-return;
-
-}
-
-if (!RAPTOR_PROFILES[profile]) {
-setMessage(
-"El perfil seleccionado no es válido.",
-true
-);
-
-return;
-
-}
-
-if (!isRaptorSheetAllowed(profile, sheet)) {
-setMessage(
-""${sheet}" no está permitido para el perfil "${profile}".",
-true
-);
-
-return;
-
-}
-
-if (!Number.isFinite(x) || !Number.isFinite(y)) {
-setMessage(
-"La posición X/Y no es válida.",
-true
-);
-
-return;
-
-}
-
-if (!Number.isFinite(scale) || scale <= 0) {
-setMessage(
-"La escala debe ser mayor que cero.",
-true
-);
-
-return;
-
-}
-
-if (!Number.isFinite(layer)) {
-setMessage(
-"El layer no es válido.",
-true
-);
-
-return;
-
-}
-
-entity.id = newId;
-entity.profile = profile;
-entity.sheet = sheet;
-
-entity.position = {
-x,
-y
-};
-
-entity.scale = scale;
-entity.layer = layer;
-entity.mirror = mirror;
-
-selectedEntityId = newId;
-
-loadRaptorImage(sheet)
-.then(() => {
-render();
-updateSpritePreview();
-})
-.catch((error) => {
-console.error(error);
-});
-
-renderElementList();
-render();
-
-setMessage(
-"Se actualizó "${newId}"."
-);
-}
-
-function deleteSelectedEntity() {
-if (!mapDefinition || !selectedEntityId) {
-setMessage(
-"Seleccione una ubicación primero.",
-true
-);
-
-return;
-
-}
-
-const index =
-mapDefinition.entities.findIndex(
-(entity) =>
-entity.id === selectedEntityId
-);
-
-if (index === -1) {
-return;
-}
-
-const deletedId =
-mapDefinition.entities[index].id;
-
-mapDefinition.entities.splice(
-index,
-1
-);
-
-selectedEntityId = null;
-
-clearSelection();
-
-setStatus(
-"${mapDefinition.entities.length} elementos"
-);
-
-setMessage(
-"Se eliminó "${deletedId}"."
-);
-}
-
-function resetSelectedEntity() {
-if (!mapDefinition || !selectedEntityId) {
-return;
-}
-
-selectEntity(selectedEntityId);
-
-setMessage(
-"Se restauraron los valores del elemento."
-);
-}
-
-function exportJson() {
-if (!mapDefinition) {
-return;
-}
-
-const output =
-JSON.stringify(
-mapDefinition,
-null,
-2
-);
-
-jsonOutput.value = output;
-
-setMessage(
-"JSON generado correctamente."
-);
-}
-
-async function copyJson() {
-if (!mapDefinition) {
-return;
-}
-
-const output =
-JSON.stringify(
-mapDefinition,
-null,
-2
-);
-
-jsonOutput.value = output;
+canvas.addEventListener(
+"pointerup",
+(event) => {
+pointerState.active = false;
 
 try {
-await navigator.clipboard.writeText(
-output
-);
+  canvas.releasePointerCapture(
+    event.pointerId
+  );
+} catch {
+  // No hacer nada.
+}
 
-setMessage(
-  "JSON copiado al portapapeles."
-);
-
-} catch (error) {
-console.error(error);
-
-setMessage(
-  "No se pudo copiar automáticamente. Puede copiarlo desde el cuadro de texto.",
-  true
-);
+if (pointerState.moved) {
+  showMessage(
+    "Posición actualizada."
+  );
+}
 
 }
+);
+
+canvas.addEventListener(
+"pointercancel",
+() => {
+pointerState.active = false;
 }
+);
+
+elementSelect.addEventListener(
+"change",
+() => {
+const id =
+elementSelect.value;
+
+if (id) {
+  selectElement(id);
+} else {
+  selectedElementId = null;
+  clearForm();
+  refreshElementList();
+  draw();
+}
+
+}
+);
+
+raptorProfile.addEventListener(
+"change",
+() => {
+updateSheetOptions();
+
+const entity =
+  getSelectedEntity();
+
+if (entity) {
+  entity.profile =
+    raptorProfile.value;
+}
+
+updateSpritePreview();
+draw();
+
+}
+);
+
+raptorSheet.addEventListener(
+"change",
+() => {
+updateSpritePreview();
+draw();
+}
+);
+
+applyElementButton.addEventListener(
+"click",
+applyChanges
+);
+
+addElementButton.addEventListener(
+"click",
+addElement
+);
+
+deleteElementButton.addEventListener(
+"click",
+deleteSelectedElement
+);
+
+resetMapButton.addEventListener(
+"click",
+resetMap
+);
+
+exportJsonButton.addEventListener(
+"click",
+exportJson
+);
+
+copyJsonButton.addEventListener(
+"click",
+copyJson
+);
+
+importJsonButton.addEventListener(
+"click",
+importJson
+);
 
 function escapeHtml(value) {
 return String(value)
@@ -948,117 +1464,5 @@ return String(value)
 .replaceAll('"', """)
 .replaceAll("'", "'");
 }
-
-elementProfile.addEventListener(
-"change",
-() => {
-updateSheetOptions();
-}
-);
-
-elementSheet.addEventListener(
-"change",
-() => {
-updateSpritePreview();
-}
-);
-
-applyButton.addEventListener(
-"click",
-applyChanges
-);
-
-deleteButton.addEventListener(
-"click",
-deleteSelectedEntity
-);
-
-resetButton.addEventListener(
-"click",
-resetSelectedEntity
-);
-
-reloadButton.addEventListener(
-"click",
-loadMap
-);
-
-exportButton.addEventListener(
-"click",
-exportJson
-);
-
-copyButton.addEventListener(
-"click",
-copyJson
-);
-
-canvas.addEventListener(
-"pointerdown",
-(event) => {
-if (!mapDefinition) {
-return;
-}
-
-const rect =
-  canvas.getBoundingClientRect();
-
-const scaleX =
-  canvas.width / rect.width;
-
-const scaleY =
-  canvas.height / rect.height;
-
-const x =
-  (event.clientX - rect.left) *
-  scaleX;
-
-const y =
-  (event.clientY - rect.top) *
-  scaleY;
-
-const entities =
-  [...mapDefinition.entities]
-    .sort(
-      (a, b) =>
-        b.layer - a.layer
-    );
-
-for (const entity of entities) {
-  if (entity.type !== "raptor") {
-    continue;
-  }
-
-  const profile =
-    RAPTOR_PROFILES[
-      entity.profile
-    ];
-
-  if (!profile) {
-    continue;
-  }
-
-  const width =
-    profile.source.width *
-    entity.scale;
-
-  const height =
-    profile.source.height *
-    entity.scale;
-
-  const inside =
-    x >= entity.position.x &&
-    x <= entity.position.x + width &&
-    y >= entity.position.y &&
-    y <= entity.position.y + height;
-
-  if (inside) {
-    selectEntity(entity.id);
-    return;
-  }
-}
-
-}
-);
 
 loadMap();
