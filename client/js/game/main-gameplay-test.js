@@ -1,104 +1,91 @@
 import { Game } from "./Game.js";
 
-console.log(
-  "[GAMEPLAY TEST] Iniciando..."
-);
+const status =
+  document.getElementById(
+    "game-status"
+  );
 
-try {
-  const canvas =
-    document.getElementById(
-      "game-canvas"
-    );
-
-  if (!canvas) {
-    throw new Error(
-      "No se encontró #game-canvas."
-    );
+function showStatus(message) {
+  if (status) {
+    status.textContent = message;
   }
+}
 
-  console.log(
-    "[GAMEPLAY TEST] Canvas encontrado."
-  );
+async function runTest() {
+  try {
+    showStatus(
+      "Prueba: buscando canvas..."
+    );
 
-  const game =
-    new Game(canvas);
+    const canvas =
+      document.getElementById(
+        "game-canvas"
+      );
 
-  console.log(
-    "[GAMEPLAY TEST] Game creado."
-  );
+    if (!canvas) {
+      throw new Error(
+        "No se encontró #game-canvas."
+      );
+    }
 
-  await game.initialize();
+    showStatus(
+      "Prueba: creando Game..."
+    );
 
-  console.log(
-    "[GAMEPLAY TEST] Game inicializado."
-  );
+    const game =
+      new Game(canvas);
 
-  const systems =
-    game.getSystems();
+    showStatus(
+      "Prueba: cargando mapa..."
+    );
 
-  console.log(
-    "[GAMEPLAY TEST] GameSystems obtenido."
-  );
+    await game.initialize();
 
-  const workers =
-    systems.workers;
+    showStatus(
+      "Prueba: asignando trabajadores..."
+    );
 
-  console.log(
-    "[GAMEPLAY TEST] WorkerManager obtenido."
-  );
+    const systems =
+      game.getSystems();
 
-  const worker1 =
+    const workers =
+      systems.workers;
+
     workers.assignWorker({
       username: "ebastos14",
       role: "mod"
     });
 
-  console.log(
-    "[GAMEPLAY TEST] Worker 1:",
-    worker1
-  );
-
-  const worker2 =
     workers.assignWorker({
       username: "jaciitv",
       role: "mod"
     });
 
-  console.log(
-    "[GAMEPLAY TEST] Worker 2:",
-    worker2
-  );
-
-  const worker3 =
     workers.assignWorker({
       username: "otro_mod",
       role: "mod"
     });
 
-  console.log(
-    "[GAMEPLAY TEST] Worker 3:",
-    worker3
-  );
+    showStatus(
+      "Prueba: sincronizando..."
+    );
 
-  game.syncGameplay();
+    game.syncGameplay();
 
-  console.log(
-    "[GAMEPLAY TEST] Gameplay sincronizado."
-  );
+    showStatus(
+      "Prueba completada."
+    );
 
-  console.log(
-    "[GAMEPLAY TEST] Workers finales:",
-    workers.getAll()
-  );
-
-  game.start();
-
-  console.log(
-    "[GAMEPLAY TEST] Juego iniciado."
-  );
-} catch (error) {
-  console.error(
-    "[GAMEPLAY TEST] ERROR:",
-    error
-  );
+    game.start();
+  } catch (error) {
+    showStatus(
+      "ERROR: " +
+        (
+          error?.message ||
+          String(error)
+        )
+    );
+  }
 }
+
+runTest();
