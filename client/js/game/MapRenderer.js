@@ -1,645 +1,889 @@
-import {
-RAPTOR_PATH,
-getRaptorProfile
-} from "../config/raptors.js";
+const RAPTOR_MAP_URL =
+  "/assets/raptors/map-raptors.json";
 
-const COUNTER_ASSET = "/assets/restaurant/Mostrador.png";
-const COUNTER_LAYER = 3;
+const FOOD_MAP_URL =
+  "/assets/food/map-food.json";
 
 export class MapRenderer {
-constructor(ctx, mapDefinition, raptorAssignments) {
-this.ctx = ctx;
-this.mapDefinition = mapDefinition;
-this.raptorAssignments = raptorAssignments;
-
-this.image = new Image();
-
-this.counterImage = new Image();
-this.counterLoaded = false;
-  
-this.loaded = false;
-this.error = null;
-
-this.raptorImages = new Map();
-this.raptorErrors = new Map();
-
-this.loadMap();
-this.loadCounter();
-this.loadRaptorImages();
-
-}
-
-loadMap() {
-this.image.onload = () => {
-this.loaded = true;
-};
-
-this.image.onerror = () => {
-  this.error = "No se pudo cargar el fondo del mapa.";
-  console.error(this.error);
-};
-
-this.image.src = this.mapDefinition.background.asset;
-
-}
-  loadCounter() {
-  this.counterImage.onload = () => {
-    this.counterLoaded = true;
-  };
-
-  this.counterImage.onerror = () => {
-    this.error = "No se pudo cargar Mostrador.png.";
-    console.error(this.error);
-  };
-
-  this.counterImage.src = COUNTER_ASSET;
-}
-
-loadRaptorImages() {
-const sheets = new Set();
-
-for (const entity of this.mapDefinition.entities ?? []) {
-  if (entity.type !== "raptor") {
-    continue;
-  }
-
-  const sheetName = this.raptorAssignments.get(entity.id);
-
-  if (sheetName) {
-    sheets.add(sheetName);
-  }
-}
-
-for (const sheetName of sheets) {
-  this.loadRaptorImage(sheetName);
-}
-
-}
-
-loadRaptorImage(sheetName) {
-if (this.raptorImages.has(sheetName)) {
-return;
-}
-
-const image = new Image();
-
-image.onload = () => {
-  this.raptorImages.set(sheetName, image);
-};
-
-image.onerror = () => {
-  const message = `No se pudo cargar el Raptor "${sheetName}".`;
-
-  this.raptorErrors.set(sheetName, message);
-
-  console.error(message);
-};
-
-image.src = `${RAPTOR_PATH}${sheetName}`;
-
-}
-
-ensureRaptorImage(sheetName) {
-if (
-this.raptorImages.has(sheetName) ||
-this.raptorErrors.has(sheetName)
-) {
-return;
-}
-
-this.loadRaptorImage(sheetName);
-
-}
-
-render() {
-  if (this.error) {
-    this.renderError();
-    return;
-  }
-
-  if (!this.loaded || !this.counterLoaded) {
-    this.renderLoading();
-    return;
-  }
-
-  this.renderBackground();
-  this.renderEntities();
-}
-
-renderBackground() {
-const canvasWidth = this.ctx.canvas.width;
-const canvasHeight = this.ctx.canvas.height;
-
-const imageWidth = this.image.naturalWidth;
-const imageHeight = this.image.naturalHeight;
-
-const scale = Math.min(
-  canvasWidth / imageWidth,
-  canvasHeight / imageHeight
-);
-
-const drawWidth = imageWidth * scale;
-const drawHeight = imageHeight * scale;
-
-const offsetX = (canvasWidth - drawWidth) / 2;
-const offsetY = (canvasHeight - drawHeight) / 2;
-
-this.ctx.fillStyle = "#111";
-this.ctx.fillRect(
-  0,
-  0,
-  canvasWidth,
-  canvasHeight
-);
-
-this.ctx.imageSmoothingEnabled = false;
-
-this.ctx.drawImage(
-  this.image,
-  offsetX,
-  offsetY,
-  drawWidth,
-  drawHeight
-);
-
-}
-
-renderEntities() {
-  const entities = [...(this.mapDefinition.entities ?? [])];
-
-  for (let layer = 2; layer <= 5; layer += 1) {
-    if (layer === COUNTER_LAYER) {
-      this.renderCounter();
+  constructor(canvas) {
+    if (!canvas) {
+      throw new Error(
+        "MapRenderer necesita un elemento canvas."
+      );
     }
 
-    const layerEntities = entities.filter((entity) => {
-      const entityLayer = Number.isFinite(entity.layer)
-        ? entity.layer
-        : 2;
+    this.canvas = canvas;
 
-      return entityLayer === layer;
-    });
+    this.ctx = canvas.getContext("2d");
 
-    for (const entity of layerEntities) {
-      this.renderEntity(entity);
+    if (!this.ctx) {
+      throw new Error(
+        "No se pudo obtener el contexto 2D."
+      );
+    }
+
+    this.backgroundImage = null;
+
+    this.raptorMap = null;
+    this.foodMap = null;
+
+    /*
+     * Layout fijo.
+     *
+     * Aquí solamente guardamos las posiciones
+     * definidas por los editores.
+     */
+    this.layout = {
+      raptors: new Map(),
+      food: new Map()
+    };
+
+    /*
+     * Estado visual/runtime.
+     *
+     * Esto será modificado posteriormente
+     * por GameState y por los comandos de chat.
+     *
+     * Ejemplo:
+     *
+     * raptors:
+     * {
+     *   Lateral_L_1: {
+     *     sprite: "Raptor_Mod.png"
+     *   }
+     * }
+     */
+    this.runtime = {
+      raptors: new Map(),
+      food: new Map()
+    };
+
+    this.scale = 1;
+    this.offsetX = 0;
+    this.offsetY = 0;
+
+    this.imageCache = new Map();
+    this.loadingImages = new Set();
+  }
+
+  async load() {
+    const [
+      raptorMap,
+      foodMap
+    ] = await Promise.all([
+      this.loadJson(RAPTOR_MAP_URL),
+      this.loadJson(FOOD_MAP_URL)
+    ]);
+
+    this.validateMap(
+      raptorMap,
+      "raptors"
+    );
+
+    this.validateMap(
+      foodMap,
+      "food"
+    );
+
+    this.raptorMap = raptorMap;
+    this.foodMap = foodMap;
+
+    /*
+     * El fondo pertenece al mapa principal.
+     * Ambos JSON deberían apuntar al mismo fondo.
+     */
+    const backgroundAsset =
+      raptorMap.background?.asset ||
+      foodMap.background?.asset;
+
+    if (!backgroundAsset) {
+      throw new Error(
+        "No se encontró background.asset."
+      );
+    }
+
+    await this.loadBackground(
+      backgroundAsset
+    );
+
+    this.buildLayout();
+
+    this.resize();
+
+    this.render();
+
+    return this;
+  }
+
+  async loadJson(url) {
+    const response =
+      await fetch(url, {
+        cache: "no-store"
+      });
+
+    if (!response.ok) {
+      throw new Error(
+        `No se pudo cargar ${url}. HTTP ${response.status}.`
+      );
+    }
+
+    return response.json();
+  }
+
+  validateMap(map, moduleName) {
+    if (
+      !map ||
+      typeof map !== "object"
+    ) {
+      throw new Error(
+        `El mapa ${moduleName} no contiene un objeto válido.`
+      );
+    }
+
+    if (
+      !Array.isArray(map.entities)
+    ) {
+      throw new Error(
+        `El mapa ${moduleName} no contiene entities.`
+      );
+    }
+
+    const ids =
+      new Set();
+
+    for (const entity of map.entities) {
+      if (!entity.id) {
+        throw new Error(
+          `Existe una entidad sin ID en el mapa ${moduleName}.`
+        );
+      }
+
+      if (ids.has(entity.id)) {
+        throw new Error(
+          `ID duplicado en ${moduleName}: ${entity.id}`
+        );
+      }
+
+      ids.add(entity.id);
     }
   }
-}
 
-renderEntity(entity) {
-if (!entity || entity.type !== "raptor") {
-return;
-}
+  async loadBackground(
+    source
+  ) {
+    return new Promise(
+      (resolve, reject) => {
+        const image =
+          new Image();
 
-this.renderRaptor(entity);
+        image.onload = () => {
+          this.backgroundImage =
+            image;
 
-}
+          resolve(image);
+        };
 
-renderRaptor(entity) {
-const sheetName = this.raptorAssignments.get(entity.id);
+        image.onerror = () => {
+          reject(
+            new Error(
+              `No se pudo cargar el fondo: ${source}`
+            )
+          );
+        };
 
-if (!sheetName) {
-  console.warn(
-    `No existe una asignación de Raptor para "${entity.id}".`
-  );
-
-  return;
-}
-
-this.ensureRaptorImage(sheetName);
-
-const image = this.raptorImages.get(sheetName);
-
-if (!image) {
-  return;
-}
-
-let profile;
-
-try {
-  profile = getRaptorProfile(entity.profile);
-} catch (error) {
-  console.error(error);
-  return;
-}
-
-const source = profile.source;
-
-const scale = Number.isFinite(entity.scale)
-  ? entity.scale
-  : 1;
-
-const width = source.width * scale;
-const height = source.height * scale;
-
-const x = Number.isFinite(entity.position?.x)
-  ? entity.position.x
-  : 0;
-
-const y = Number.isFinite(entity.position?.y)
-  ? entity.position.y
-  : 0;
-
-this.ctx.save();
-
-this.ctx.imageSmoothingEnabled = false;
-
-if (entity.mirror) {
-  this.ctx.translate(
-    x + width,
-    y
-  );
-
-  this.ctx.scale(-1, 1);
-
-  this.ctx.drawImage(
-    image,
-    source.x,
-    source.y,
-    source.width,
-    source.height,
-    0,
-    0,
-    width,
-    height
-  );
-} else {
-  this.ctx.drawImage(
-    image,
-    source.x,
-    source.y,
-    source.width,
-    source.height,
-    x,
-    y,
-    width,
-    height
-  );
-}
-
-this.ctx.restore();
-
-}
-
-renderLoading() {
-const canvasWidth = this.ctx.canvas.width;
-const canvasHeight = this.ctx.canvas.height;
-
-this.ctx.fillStyle = "#111";
-
-this.ctx.fillRect(
-  0,
-  0,
-  canvasWidth,
-  canvasHeight
-);
-
-this.ctx.fillStyle = "#fff";
-this.ctx.font = "20px monospace";
-this.ctx.textAlign = "center";
-
-this.ctx.fillText(
-  "Cargando mapa...",
-  canvasWidth / 2,
-  canvasHeight / 2
-);
-
-}
-
-renderError() {
-const canvasWidth = this.ctx.canvas.width;
-const canvasHeight = this.ctx.canvas.height;
-
-this.ctx.fillStyle = "#111";
-
-this.ctx.fillRect(
-  0,
-  0,
-  canvasWidth,
-  canvasHeight
-);
-
-this.ctx.fillStyle = "#f44";
-this.ctx.font = "18px monospace";
-this.ctx.textAlign = "center";
-
-this.ctx.fillText(
-  this.error,
-  canvasWidth / 2,
-  canvasHeight / 2
-);
-
-}
-}import {
-RAPTOR_PATH,
-getRaptorProfile
-} from "../config/raptors.js";
-
-export class MapRenderer {
-constructor(ctx, mapDefinition, raptorAssignments) {
-this.ctx = ctx;
-this.mapDefinition = mapDefinition;
-this.raptorAssignments = raptorAssignments;
-
-this.image = new Image();
-this.loaded = false;
-this.error = null;
-
-this.raptorImages = new Map();
-this.raptorErrors = new Map();
-
-this.loadMap();
-this.loadRaptorImages();
-
-}
-
-loadMap() {
-this.image.onload = () => {
-this.loaded = true;
-};
-
-this.image.onerror = () => {
-  this.error = "No se pudo cargar el fondo del mapa.";
-  console.error(this.error);
-};
-
-this.image.src = this.mapDefinition.background.asset;
-
-}
-
-loadRaptorImages() {
-const sheets = new Set();
-
-for (const entity of this.mapDefinition.entities ?? []) {
-  if (entity.type !== "raptor") {
-    continue;
+        image.src =
+          source;
+      }
+    );
   }
 
-  const sheetName = this.raptorAssignments.get(entity.id);
+  buildLayout() {
+    this.layout.raptors.clear();
+    this.layout.food.clear();
 
-  if (sheetName) {
-    sheets.add(sheetName);
+    /*
+     * =========================
+     * RAPTORS
+     * =========================
+     *
+     * Importamos:
+     * - id
+     * - type
+     * - profile
+     * - position
+     * - scale
+     * - mirror
+     * - layer
+     *
+     * NO importamos:
+     * - sprite activo
+     * - assignment
+     * - imagen
+     */
+
+    for (
+      const entity of
+      this.raptorMap.entities
+    ) {
+      if (
+        entity.type !==
+        "raptor"
+      ) {
+        continue;
+      }
+
+      this.layout.raptors.set(
+        entity.id,
+        {
+          id: entity.id,
+          type: "raptor",
+
+          profile:
+            entity.profile ||
+            "lateral",
+
+          position: {
+            x:
+              Number(
+                entity.position?.x
+              ) || 0,
+
+            y:
+              Number(
+                entity.position?.y
+              ) || 0
+          },
+
+          scale:
+            Number(entity.scale) ||
+            1,
+
+          mirror:
+            Boolean(entity.mirror),
+
+          layer:
+            Number(entity.layer) ||
+            0
+        }
+      );
+    }
+
+    /*
+     * =========================
+     * FOOD
+     * =========================
+     *
+     * Las entidades "menu" son
+     * ignoradas por el RenderMap.
+     *
+     * Esas coordenadas sirven al
+     * editor para saber de dónde
+     * cortar sprites.
+     *
+     * El juego principal NO las
+     * necesita aquí.
+     */
+
+    for (
+      const entity of
+      this.foodMap.entities
+    ) {
+      if (
+        entity.type ===
+        "menu"
+      ) {
+        continue;
+      }
+
+      if (
+        ![
+          "food",
+          "drink",
+          "bag"
+        ].includes(entity.type)
+      ) {
+        continue;
+      }
+
+      this.layout.food.set(
+        entity.id,
+        {
+          id: entity.id,
+
+          type:
+            entity.type,
+
+          position: {
+            x:
+              Number(
+                entity.position?.x
+              ) || 0,
+
+            y:
+              Number(
+                entity.position?.y
+              ) || 0
+          },
+
+          scale:
+            Number(entity.scale) ||
+            1,
+
+          layer:
+            Number(entity.layer) ||
+            0,
+
+          /*
+           * La sección es una
+           * propiedad lógica de la
+           * ubicación.
+           *
+           * NO es todavía un sprite.
+           */
+          section:
+            Number(entity.section) ||
+            1
+        }
+      );
+    }
   }
-}
 
-for (const sheetName of sheets) {
-  this.loadRaptorImage(sheetName);
-}
+  /*
+   * Permite que GameState entregue
+   * el estado visual actual.
+   *
+   * Ejemplo:
+   *
+   * renderer.setRuntimeRaptor(
+   *   "Lateral_L_1",
+   *   {
+   *     sprite: "Raptor_Mod.png"
+   *   }
+   * );
+   */
+  setRuntimeRaptor(
+    locationId,
+    data
+  ) {
+    if (
+      !this.layout.raptors.has(
+        locationId
+      )
+    ) {
+      throw new Error(
+        `Ubicación de Raptor desconocida: ${locationId}`
+      );
+    }
 
-}
+    this.runtime.raptors.set(
+      locationId,
+      {
+        ...data
+      }
+    );
 
-loadRaptorImage(sheetName) {
-if (this.raptorImages.has(sheetName)) {
-return;
-}
+    this.render();
+  }
 
-const image = new Image();
+  removeRuntimeRaptor(
+    locationId
+  ) {
+    this.runtime.raptors.delete(
+      locationId
+    );
 
-image.onload = () => {
-  this.raptorImages.set(sheetName, image);
-};
+    this.render();
+  }
 
-image.onerror = () => {
-  const message = `No se pudo cargar el Raptor "${sheetName}".`;
+  setRuntimeFood(
+    locationId,
+    data
+  ) {
+    if (
+      !this.layout.food.has(
+        locationId
+      )
+    ) {
+      throw new Error(
+        `Ubicación de comida desconocida: ${locationId}`
+      );
+    }
 
-  this.raptorErrors.set(sheetName, message);
+    this.runtime.food.set(
+      locationId,
+      {
+        ...data
+      }
+    );
 
-  console.error(message);
-};
+    this.render();
+  }
 
-image.src = `${RAPTOR_PATH}${sheetName}`;
+  removeRuntimeFood(
+    locationId
+  ) {
+    this.runtime.food.delete(
+      locationId
+    );
 
-}
+    this.render();
+  }
 
-ensureRaptorImage(sheetName) {
-if (
-this.raptorImages.has(sheetName) ||
-this.raptorErrors.has(sheetName)
-) {
-return;
-}
+  getRaptorLocation(
+    locationId
+  ) {
+    return (
+      this.layout.raptors.get(
+        locationId
+      ) || null
+    );
+  }
 
-this.loadRaptorImage(sheetName);
+  getFoodLocation(
+    locationId
+  ) {
+    return (
+      this.layout.food.get(
+        locationId
+      ) || null
+    );
+  }
 
-}
+  getMapSize() {
+    const width =
+      Number(
+        this.raptorMap?.background?.width
+      ) ||
+      Number(
+        this.foodMap?.background?.width
+      ) ||
+      this.backgroundImage
+        ?.naturalWidth ||
+      1536;
 
-render() {
-if (this.error) {
-this.renderError();
-return;
-}
+    const height =
+      Number(
+        this.raptorMap?.background?.height
+      ) ||
+      Number(
+        this.foodMap?.background?.height
+      ) ||
+      this.backgroundImage
+        ?.naturalHeight ||
+      1536;
 
-if (!this.loaded) {
-  this.renderLoading();
-  return;
-}
+    return {
+      width,
+      height
+    };
+  }
 
-this.renderBackground();
-this.renderEntities();
+  resize() {
+    const {
+      width,
+      height
+    } = this.getMapSize();
 
-}
+    this.scale =
+      Math.min(
+        this.canvas.width /
+          width,
 
-renderBackground() {
-const canvasWidth = this.ctx.canvas.width;
-const canvasHeight = this.ctx.canvas.height;
+        this.canvas.height /
+          height
+      );
 
-const imageWidth = this.image.naturalWidth;
-const imageHeight = this.image.naturalHeight;
+    this.offsetX =
+      (
+        this.canvas.width -
+        width * this.scale
+      ) / 2;
 
-const scale = Math.min(
-  canvasWidth / imageWidth,
-  canvasHeight / imageHeight
-);
+    this.offsetY =
+      (
+        this.canvas.height -
+        height * this.scale
+      ) / 2;
+  }
 
-const drawWidth = imageWidth * scale;
-const drawHeight = imageHeight * scale;
-
-const offsetX = (canvasWidth - drawWidth) / 2;
-const offsetY = (canvasHeight - drawHeight) / 2;
-
-this.ctx.fillStyle = "#111";
-this.ctx.fillRect(
-  0,
-  0,
-  canvasWidth,
-  canvasHeight
-);
-
-this.ctx.imageSmoothingEnabled = false;
-
-this.ctx.drawImage(
-  this.image,
-  offsetX,
-  offsetY,
-  drawWidth,
-  drawHeight
-);
-
-}
-
-renderEntities() {
-const entities = [...(this.mapDefinition.entities ?? [])];
-
-entities.sort((a, b) => {
-  const layerA = Number.isFinite(a.layer)
-    ? a.layer
-    : 0;
-
-  const layerB = Number.isFinite(b.layer)
-    ? b.layer
-    : 0;
-
-  return layerA - layerB;
-});
-
-for (const entity of entities) {
-  this.renderEntity(entity);
-}
-
-}
-
-renderEntity(entity) {
-if (!entity || entity.type !== "raptor") {
-return;
-}
-
-this.renderRaptor(entity);
-
-}
-
-renderRaptor(entity) {
-const sheetName = this.raptorAssignments.get(entity.id);
-
-if (!sheetName) {
-  console.warn(
-    `No existe una asignación de Raptor para "${entity.id}".`
-  );
-
-  return;
-}
-
-this.ensureRaptorImage(sheetName);
-
-const image = this.raptorImages.get(sheetName);
-
-if (!image) {
-  return;
-}
-
-let profile;
-
-try {
-  profile = getRaptorProfile(entity.profile);
-} catch (error) {
-  console.error(error);
-  return;
-}
-
-const source = profile.source;
-
-const scale = Number.isFinite(entity.scale)
-  ? entity.scale
-  : 1;
-
-const width = source.width * scale;
-const height = source.height * scale;
-
-const x = Number.isFinite(entity.position?.x)
-  ? entity.position.x
-  : 0;
-
-const y = Number.isFinite(entity.position?.y)
-  ? entity.position.y
-  : 0;
-
-this.ctx.save();
-
-this.ctx.imageSmoothingEnabled = false;
-
-if (entity.mirror) {
-  this.ctx.translate(
-    x + width,
-    y
-  );
-
-  this.ctx.scale(-1, 1);
-
-  this.ctx.drawImage(
-    image,
-    source.x,
-    source.y,
-    source.width,
-    source.height,
-    0,
-    0,
-    width,
-    height
-  );
-} else {
-  this.ctx.drawImage(
-    image,
-    source.x,
-    source.y,
-    source.width,
-    source.height,
+  mapToScreen(
     x,
-    y,
-    width,
-    height
-  );
-}
+    y
+  ) {
+    return {
+      x:
+        this.offsetX +
+        x * this.scale,
 
-this.ctx.restore();
+      y:
+        this.offsetY +
+        y * this.scale
+    };
+  }
 
-}
+  loadImage(
+    source
+  ) {
+    if (!source) {
+      return null;
+    }
 
-renderLoading() {
-const canvasWidth = this.ctx.canvas.width;
-const canvasHeight = this.ctx.canvas.height;
+    if (
+      this.imageCache.has(
+        source
+      )
+    ) {
+      return this.imageCache.get(
+        source
+      );
+    }
 
-this.ctx.fillStyle = "#111";
+    if (
+      this.loadingImages.has(
+        source
+      )
+    ) {
+      return null;
+    }
 
-this.ctx.fillRect(
-  0,
-  0,
-  canvasWidth,
-  canvasHeight
-);
+    this.loadingImages.add(
+      source
+    );
 
-this.ctx.fillStyle = "#fff";
-this.ctx.font = "20px monospace";
-this.ctx.textAlign = "center";
+    const image =
+      new Image();
 
-this.ctx.fillText(
-  "Cargando mapa...",
-  canvasWidth / 2,
-  canvasHeight / 2
-);
+    image.onload = () => {
+      this.loadingImages.delete(
+        source
+      );
 
-}
+      this.imageCache.set(
+        source,
+        image
+      );
 
-renderError() {
-const canvasWidth = this.ctx.canvas.width;
-const canvasHeight = this.ctx.canvas.height;
+      this.render();
+    };
 
-this.ctx.fillStyle = "#111";
+    image.onerror = () => {
+      this.loadingImages.delete(
+        source
+      );
 
-this.ctx.fillRect(
-  0,
-  0,
-  canvasWidth,
-  canvasHeight
-);
+      console.error(
+        `No se pudo cargar sprite: ${source}`
+      );
+    };
 
-this.ctx.fillStyle = "#f44";
-this.ctx.font = "18px monospace";
-this.ctx.textAlign = "center";
+    image.src =
+      source;
 
-this.ctx.fillText(
-  this.error,
-  canvasWidth / 2,
-  canvasHeight / 2
-);
+    return null;
+  }
 
-}
+  render() {
+    if (
+      !this.backgroundImage
+    ) {
+      return;
+    }
+
+    this.ctx.clearRect(
+      0,
+      0,
+      this.canvas.width,
+      this.canvas.height
+    );
+
+    this.ctx.imageSmoothingEnabled =
+      false;
+
+    this.renderBackground();
+
+    /*
+     * Los objetos se mezclan en una
+     * sola lista para respetar layer.
+     */
+    const renderList = [];
+
+    for (
+      const [
+        id,
+        layout
+      ] of this.layout.raptors
+    ) {
+      const runtime =
+        this.runtime.raptors.get(
+          id
+        );
+
+      /*
+       * Si no existe estado runtime,
+       * no dibujamos sprite.
+       *
+       * La ubicación sí existe,
+       * pero está vacía.
+       */
+      if (!runtime) {
+        continue;
+      }
+
+      renderList.push({
+        kind: "raptor",
+        layout,
+        runtime
+      });
+    }
+
+    for (
+      const [
+        id,
+        layout
+      ] of this.layout.food
+    ) {
+      const runtime =
+        this.runtime.food.get(
+          id
+        );
+
+      if (!runtime) {
+        continue;
+      }
+
+      renderList.push({
+        kind: "food",
+        layout,
+        runtime
+      });
+    }
+
+    renderList.sort(
+      (a, b) =>
+        (a.layout.layer || 0) -
+        (b.layout.layer || 0)
+    );
+
+    for (
+      const item of
+      renderList
+    ) {
+      if (
+        item.kind ===
+        "raptor"
+      ) {
+        this.renderRaptor(
+          item.layout,
+          item.runtime
+        );
+      }
+
+      if (
+        item.kind ===
+        "food"
+      ) {
+        this.renderFood(
+          item.layout,
+          item.runtime
+        );
+      }
+    }
+  }
+
+  renderBackground() {
+    const {
+      width,
+      height
+    } = this.getMapSize();
+
+    this.ctx.fillStyle =
+      "#111";
+
+    this.ctx.fillRect(
+      0,
+      0,
+      this.canvas.width,
+      this.canvas.height
+    );
+
+    this.ctx.drawImage(
+      this.backgroundImage,
+      this.offsetX,
+      this.offsetY,
+      width * this.scale,
+      height * this.scale
+    );
+  }
+
+  renderRaptor(
+    layout,
+    runtime
+  ) {
+    /*
+     * El sprite viene del runtime.
+     *
+     * El mapa NO decide cuál Raptor
+     * está ocupando la ubicación.
+     */
+    if (!runtime.sprite) {
+      return;
+    }
+
+    const source =
+      runtime.source;
+
+    if (!source) {
+      /*
+       * Por ahora dejamos esta parte
+       * preparada para el sistema de
+       * sprites de Raptor.
+       */
+      return;
+    }
+
+    const image =
+      this.loadImage(
+        runtime.sprite
+      );
+
+    if (!image) {
+      return;
+    }
+
+    const scale =
+      layout.scale *
+      this.scale;
+
+    const width =
+      source.width *
+      scale;
+
+    const height =
+      source.height *
+      scale;
+
+    const position =
+      this.mapToScreen(
+        layout.position.x,
+        layout.position.y
+      );
+
+    this.ctx.save();
+
+    this.ctx.imageSmoothingEnabled =
+      false;
+
+    if (layout.mirror) {
+      this.ctx.translate(
+        position.x + width,
+        position.y
+      );
+
+      this.ctx.scale(
+        -1,
+        1
+      );
+
+      this.ctx.drawImage(
+        image,
+
+        source.x,
+        source.y,
+        source.width,
+        source.height,
+
+        0,
+        0,
+        width,
+        height
+      );
+    } else {
+      this.ctx.drawImage(
+        image,
+
+        source.x,
+        source.y,
+        source.width,
+        source.height,
+
+        position.x,
+        position.y,
+        width,
+        height
+      );
+    }
+
+    this.ctx.restore();
+  }
+
+  renderFood(
+    layout,
+    runtime
+  ) {
+    /*
+     * Igual que los Raptors:
+     *
+     * layout = posición
+     * runtime = sprite/estado
+     */
+
+    if (!runtime.sprite) {
+      return;
+    }
+
+    const source =
+      runtime.source;
+
+    if (!source) {
+      return;
+    }
+
+    const image =
+      this.loadImage(
+        runtime.sprite
+      );
+
+    if (!image) {
+      return;
+    }
+
+    const scale =
+      layout.scale *
+      this.scale;
+
+    const width =
+      source.width *
+      scale;
+
+    const height =
+      source.height *
+      scale;
+
+    const position =
+      this.mapToScreen(
+        layout.position.x,
+        layout.position.y
+      );
+
+    this.ctx.save();
+
+    this.ctx.imageSmoothingEnabled =
+      false;
+
+    this.ctx.drawImage(
+      image,
+
+      source.x,
+      source.y,
+      source.width,
+      source.height,
+
+      position.x,
+      position.y,
+      width,
+      height
+    );
+
+    this.ctx.restore();
+  }
 }
