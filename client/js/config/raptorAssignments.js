@@ -1,4 +1,4 @@
-import mapDefinition from "../../assets/restaurant/map.json" with { type: "json" };
+import mapDefinition from "../../assets/raptors/map-raptors.json" with { type: "json" };
 import assignmentDefinition from "../../assets/restaurant/raptorAssignments.json" with { type: "json" };
 
 import {
@@ -13,7 +13,7 @@ const entity = mapDefinition.entities?.find(
 
 if (!entity) {
 throw new Error(
-"No existe la ubicación "${locationId}" en map.json."
+"No existe la ubicación "${locationId}" en map-raptors.json."
 );
 }
 
@@ -143,9 +143,7 @@ locationId
 }
 
 remove(locationId) {
-this.assignments.delete(
-locationId
-);
+this.assignments.delete(locationId);
 }
 
 clear() {
