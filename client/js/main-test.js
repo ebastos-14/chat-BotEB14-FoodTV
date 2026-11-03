@@ -10,14 +10,14 @@ const FOOD_PATH = "/assets/food/";
 
 const RAPTOR_TEST_ASSIGNMENTS = {
   Lateral_L_1: "Raptor_Mod.png",
-  Lateral_L_2: "Raptor_EBastos14.png",
-  Lateral_L_3: "Raptor_JaciiTV_1.png",
-  Lateral_L_4: "Raptor_JaciiTV_2.png",
+  Lateral_L_2: "Raptor_Ebastos14.png",
+  Lateral_L_3: "Raptor_Jaciitv_1.png",
+  Lateral_L_4: "Raptor_Jaciitv_2.png",
 
   Lateral_R_1: "Raptor_Mod.png",
-  Lateral_R_2: "Raptor_EBastos14.png",
-  Lateral_R_3: "Raptor_JaciiTV_1.png",
-  Lateral_R_4: "Raptor_JaciiTV_2.png",
+  Lateral_R_2: "Raptor_Ebastos14.png",
+  Lateral_R_3: "Raptor_Jaciitv_1.png",
+  Lateral_R_4: "Raptor_Jaciitv_2.png",
 
   Front: "Raptor_Mod.png",
 
