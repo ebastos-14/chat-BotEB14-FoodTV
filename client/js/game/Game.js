@@ -1,5 +1,6 @@
 import { MapRenderer } from "./MapRenderer.js";
 import { GameState } from "./GameState.js";
+import { GameSystems } from "./GameSystems.js";
 
 export class Game {
   constructor(canvas) {
@@ -11,8 +12,40 @@ export class Game {
 
     this.canvas = canvas;
 
+    /*
+     * =========================
+     * ESTADO VISUAL
+     * =========================
+     */
+
     this.state =
       new GameState();
+
+    /*
+     * =========================
+     * SISTEMAS DE GAMEPLAY
+     * =========================
+     *
+     * Aquí viven:
+     *
+     * - posiciones lógicas
+     * - trabajadores
+     * - clientes
+     * - pedidos
+     * - acciones
+     *
+     * Todavía no se conectan
+     * directamente con el renderer.
+     */
+
+    this.systems =
+      new GameSystems();
+
+    /*
+     * =========================
+     * RENDERER
+     * =========================
+     */
 
     this.renderer =
       new MapRenderer(
@@ -23,9 +56,11 @@ export class Game {
     this.lastFrameTime = 0;
 
     /*
-     * Cuando cambia el estado,
-     * el renderer vuelve a dibujar.
+     * Cuando cambia el estado
+     * visual, el renderer vuelve
+     * a sincronizarse.
      */
+
     this.unsubscribe =
       this.state.subscribe(
         () => {
@@ -40,18 +75,16 @@ export class Game {
      * - mapa de Raptors
      * - mapa de Food
      * - fondo
-     *
-     * NO carga:
-     * - raptorAssignments.json
-     * - un Raptor activo
-     * - una comida activa
+     * - capas fijas
      */
+
     await this.renderer.load();
 
     /*
      * Inicialmente el juego
      * no tiene entidades activas.
      */
+
     this.syncRenderer();
 
     return this;
@@ -107,16 +140,26 @@ export class Game {
 
   /*
    * =========================
+   * ACCESO A SISTEMAS
+   * =========================
+   */
+
+  getSystems() {
+    return this.systems;
+  }
+
+  /*
+   * =========================
    * API TEMPORAL
    * =========================
    *
-   * Estas funciones nos permiten
-   * comprobar el sistema antes de
-   * conectar Twitch.
+   * Estas funciones continúan
+   * existiendo para las pruebas
+   * visuales actuales.
    *
-   * Después serán reemplazadas/
-   * utilizadas por el sistema de
-   * comandos y WebSocket.
+   * Después podrán ser utilizadas
+   * por el adaptador gameplay ->
+   * renderer.
    */
 
   setRaptor(
@@ -216,22 +259,36 @@ export class Game {
     /*
      * Aquí entrarán posteriormente:
      *
-     * - movimiento
+     * - movimiento lógico
      * - animaciones
+     * - zoom_in
+     * - zoom_out
      * - interacciones
      * - cooldowns
      * - timers
-     * - etc.
      *
-     * Por ahora el estado es estático.
+     * Por ahora el estado
+     * permanece estático.
      */
 
     void deltaTime;
   }
 
+  /*
+   * =========================
+   * STOP
+   * =========================
+   */
+
   stop() {
     this.running = false;
   }
+
+  /*
+   * =========================
+   * DESTROY
+   * =========================
+   */
 
   destroy() {
     this.stop();
@@ -240,6 +297,7 @@ export class Game {
       this.unsubscribe
     ) {
       this.unsubscribe();
+
       this.unsubscribe =
         null;
     }
