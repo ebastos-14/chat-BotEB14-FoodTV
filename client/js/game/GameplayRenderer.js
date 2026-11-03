@@ -19,19 +19,6 @@ export class GameplayRenderer {
     this.state = state;
   }
 
-  /*
-   * =========================
-   * SYNC COMPLETO
-   * =========================
-   *
-   * Reconstruye las entidades
-   * visuales a partir del estado
-   * lógico.
-   *
-   * Todavía no modifica el mapa
-   * ni las coordenadas originales.
-   */
-
   sync() {
     this.clearVisualEntities();
 
@@ -39,46 +26,16 @@ export class GameplayRenderer {
     this.syncCustomers();
   }
 
-  /*
-   * =========================
-   * LIMPIAR
-   * =========================
-   */
-
   clearVisualEntities() {
-    this.state.raptors.clear();
-    this.state.food.clear();
+    this.state.clear();
   }
-
-  /*
-   * =========================
-   * WORKERS
-   * =========================
-   *
-   * Cada worker tiene una posición
-   * lógica determinada por WorkerManager.
-   *
-   * mod_1 -> Left_1
-   * mod_2 -> Left_2
-   * mod_3 -> Left_3
-   * mod_4 -> Left_4
-   *
-   * El renderer todavía utiliza
-   * la información del registro
-   * de posiciones para obtener
-   * profile y mirror.
-   */
 
   syncWorkers() {
     const workers =
       this.systems.workers.getAll();
 
     for (const worker of workers) {
-      if (!worker) {
-        continue;
-      }
-
-      if (!worker.positionId) {
+      if (!worker.username) {
         continue;
       }
 
@@ -96,37 +53,18 @@ export class GameplayRenderer {
         {
           sprite: worker.sprite,
           profile: position.profile,
-          mirror: position.mirror,
-          scale: worker.scale ?? position.scale,
-          layer: position.layer
+          mirror: position.mirror
         }
       );
     }
   }
-
-  /*
-   * =========================
-   * CUSTOMERS
-   * =========================
-   *
-   * Los clientes utilizan:
-   *
-   * Client_1..Client_4
-   *
-   * y siempre utilizan el profile
-   * back definido por PositionRegistry.
-   */
 
   syncCustomers() {
     const customers =
       this.systems.customers.getAll();
 
     for (const customer of customers) {
-      if (!customer) {
-        continue;
-      }
-
-      if (!customer.positionId) {
+      if (!customer.username) {
         continue;
       }
 
@@ -144,22 +82,11 @@ export class GameplayRenderer {
         {
           sprite: customer.sprite,
           profile: position.profile,
-          mirror: position.mirror,
-          scale: customer.scale ?? position.scale,
-          layer: position.layer
+          mirror: position.mirror
         }
       );
     }
   }
-
-  /*
-   * =========================
-   * REFRESH
-   * =========================
-   *
-   * Alias explícito para cuando
-   * una acción cambie el estado.
-   */
 
   refresh() {
     this.sync();
