@@ -6,17 +6,14 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 
 «»
 
-  <title>Editor Food - chat-BotEB14-FoodTV</title>  <link
-    rel="stylesheet"
-    href="/editor/food/editor.css"
-  >
+  <title>Editor de Food - chat-BotEB14-FoodTV</title>  <link rel="stylesheet" href="/editor/food/editor.css">
 </head><body>  <main class="editor-page"><header class="editor-header">
 
   <div>
-    <h1>Editor Food</h1>
+    <h1>Editor de Food</h1>
 
     <p>
-      Editor de comidas, bebidas, bolsas y mapeo de sprites
+      Configuración de comidas, bebidas, bolsas y ubicaciones
     </p>
   </div>
 
@@ -32,9 +29,9 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 <section class="editor-layout">
 
 
-  <!-- =====================================================
-       VISTA DEL MAPA
-       ===================================================== -->
+  <!-- ==============================
+       MAPA
+       ============================== -->
 
   <section class="editor-map-panel">
 
@@ -55,7 +52,7 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
         id="editor-canvas"
         width="1280"
         height="720"
-        aria-label="Mapa del restaurante para editar Food"
+        aria-label="Mapa del restaurante"
       ></canvas>
 
     </div>
@@ -64,23 +61,47 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 
 
 
-  <!-- =====================================================
+  <!-- ==============================
        CONTROLES
-       ===================================================== -->
+       ============================== -->
 
   <aside class="editor-controls">
 
 
-    <!-- ===================================================
+    <!-- ============================
+         ELEMENTO
+         ============================ -->
+
+    <section class="editor-panel">
+
+      <h2>Elemento</h2>
+
+      <label for="entity-select">
+        Ubicación
+      </label>
+
+      <select id="entity-select">
+
+        <option value="">
+          Seleccione una ubicación
+        </option>
+
+      </select>
+
+    </section>
+
+
+
+    <!-- ============================
          TIPO
-         =================================================== -->
+         ============================ -->
 
     <section class="editor-panel">
 
       <h2>Tipo</h2>
 
       <label for="food-type">
-        Categoría
+        Tipo de elemento
       </label>
 
       <select id="food-type">
@@ -103,28 +124,28 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 
 
 
-    <!-- ===================================================
+    <!-- ============================
          SPRITESHEET
-         =================================================== -->
+         ============================ -->
 
     <section class="editor-panel">
 
       <h2>Spritesheet</h2>
 
       <label for="sheet-select">
-        Imagen
+        Recurso
       </label>
 
       <select id="sheet-select">
 
         <optgroup label="Comidas">
 
-          <option value="Menu_Hamburguesa.png">
-            Hamburguesa
-          </option>
-
           <option value="Menu_Taco.png">
             Taco
+          </option>
+
+          <option value="Menu_Hamburguesa.png">
+            Hamburguesa
           </option>
 
           <option value="Menu_Burrito.png">
@@ -173,22 +194,16 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 
 
 
-    <!-- ===================================================
-         SECCIÓN DEL SPRITESHEET
-         =================================================== -->
+    <!-- ============================
+         SECCIÓN
+         ============================ -->
 
     <section class="editor-panel">
 
       <h2>Sección</h2>
 
-      <p>
-        Las spritesheets utilizan 8 secciones.
-        No existe sección 0.
-        La sección 1 representa el elemento vacío.
-      </p>
-
       <label for="section-select">
-        Sección
+        Sección del spritesheet
       </label>
 
       <select id="section-select">
@@ -231,13 +246,13 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 
 
 
-    <!-- ===================================================
-         MAPEO SOURCE
-         =================================================== -->
+    <!-- ============================
+         SOURCE
+         ============================ -->
 
     <section class="editor-panel">
 
-      <h2>Mapeo de imagen</h2>
+      <h2>Mapeo</h2>
 
       <p>
         Coordenadas de la sección dentro de la spritesheet.
@@ -257,7 +272,6 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
             type="number"
             step="1"
             min="0"
-            inputmode="numeric"
           >
 
         </div>
@@ -274,7 +288,6 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
             type="number"
             step="1"
             min="0"
-            inputmode="numeric"
           >
 
         </div>
@@ -291,7 +304,6 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
             type="number"
             step="1"
             min="1"
-            inputmode="numeric"
           >
 
         </div>
@@ -308,7 +320,6 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
             type="number"
             step="1"
             min="1"
-            inputmode="numeric"
           >
 
         </div>
@@ -322,14 +333,14 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
           id="apply-section"
           type="button"
         >
-          Aplicar sección
+          Aplicar
         </button>
 
         <button
           id="generate-sections"
           type="button"
         >
-          Generar 8 secciones
+          Generar 8
         </button>
 
       </div>
@@ -338,30 +349,16 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 
 
 
-    <!-- ===================================================
-         UBICACIONES
-         =================================================== -->
+    <!-- ============================
+         POSICIÓN
+         ============================ -->
 
     <section class="editor-panel">
 
-      <h2>Ubicación</h2>
-
-
-      <label for="entity-select">
-        Elemento
-      </label>
-
-      <select id="entity-select">
-
-        <option value="">
-          Seleccione una ubicación
-        </option>
-
-      </select>
+      <h2>Posición</h2>
 
 
       <div class="field-grid">
-
 
         <div class="field">
 
@@ -373,7 +370,6 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
             id="entity-x"
             type="number"
             step="1"
-            inputmode="numeric"
           >
 
         </div>
@@ -389,7 +385,6 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
             id="entity-y"
             type="number"
             step="1"
-            inputmode="numeric"
           >
 
         </div>
@@ -406,7 +401,6 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
             type="number"
             step="0.001"
             min="0.01"
-            inputmode="decimal"
           >
 
         </div>
@@ -422,7 +416,6 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
             id="entity-layer"
             type="number"
             step="1"
-            inputmode="numeric"
           >
 
         </div>
@@ -436,9 +429,8 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
           id="apply-entity"
           type="button"
         >
-          Aplicar ubicación
+          Aplicar
         </button>
-
 
         <button
           id="reset-entity"
@@ -446,7 +438,6 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
         >
           Restablecer
         </button>
-
 
         <button
           id="delete-entity"
@@ -462,9 +453,9 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 
 
 
-    <!-- ===================================================
-         AGREGAR
-         =================================================== -->
+    <!-- ============================
+         UBICACIONES
+         ============================ -->
 
     <section class="editor-panel">
 
@@ -481,9 +472,9 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 
 
 
-    <!-- ===================================================
+    <!-- ============================
          JSON
-         =================================================== -->
+         ============================ -->
 
     <section class="editor-panel">
 
@@ -496,15 +487,14 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
           id="export-json"
           type="button"
         >
-          Exportar JSON
+          Exportar
         </button>
-
 
         <button
           id="copy-json"
           type="button"
         >
-          Copiar JSON
+          Copiar
         </button>
 
       </div>
@@ -512,7 +502,7 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 
       <textarea
         id="json-data"
-        rows="18"
+        rows="14"
         spellcheck="false"
         placeholder="Aquí aparecerá map-food.json..."
       ></textarea>
@@ -535,9 +525,7 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 
 </section>
 
-  </main>  <!-- =======================================================
-       FOOD EDITOR
-       ======================================================= -->  <script
+  </main>  <script
     type="module"
     src="/editor/food/food_editor.js"
   ></script></body>
