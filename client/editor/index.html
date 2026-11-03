@@ -1,262 +1,168 @@
-<!DOCTYPE html>
-<html lang="es">
+<!DOCTYPE html><html lang="es">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8"><meta
+name="viewport"
+content="width=device-width, initial-scale=1.0"
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-  >
+«»
 
-  <title>
-    Editor de mapa - chat-BotEB14-FoodTV
-  </title>
-
-  <link
+  <title>Editor - chat-BotEB14-FoodTV</title>  <link
     rel="stylesheet"
-    href="./editor.css"
+    href="/editor/editor.css"
   >
-</head>
+</head><body>  <main class="editor-page"><header class="editor-header">
+  <h1>Editor del restaurante</h1>
 
-<body>
+  <p>
+    Selecciona el módulo que deseas editar.
+  </p>
+</header>
 
-  <header class="editor-header">
+<section
+  id="editor-selector"
+  class="editor-selector"
+>
 
-    <div>
-      <h1>Editor de mapa</h1>
-      <p>chat-BotEB14-FoodTV</p>
-    </div>
+  <button
+    id="open-raptor-editor"
+    type="button"
+    class="editor-module-button"
+  >
+    <strong>Raptors</strong>
 
-    <div
-      id="editor-status"
-      data-type="info"
-      role="status"
-      aria-live="polite"
+    <span>
+      Editar ubicaciones, perfiles,
+      sprites y posiciones de Raptors.
+    </span>
+  </button>
+
+  <button
+    id="open-food-editor"
+    type="button"
+    class="editor-module-button"
+  >
+    <strong>Food</strong>
+
+    <span>
+      Editar comidas, bebidas y bolsas.
+    </span>
+  </button>
+
+</section>
+
+<section
+  id="editor-container"
+  class="editor-container"
+  hidden
+>
+
+  <div class="editor-toolbar">
+
+    <button
+      id="back-to-editor-selector"
+      type="button"
     >
-      Iniciando editor...
-    </div>
+      ← Volver
+    </button>
 
-  </header>
+    <strong id="active-editor-name">
+      Editor
+    </strong>
 
-  <main class="editor-layout">
+  </div>
 
-    <section class="map-panel">
+  <iframe
+    id="editor-frame"
+    title="Editor del restaurante"
+    loading="eager"
+  ></iframe>
 
-      <canvas
-        id="editor-canvas"
-        width="1536"
-        height="1536"
-        aria-label="Editor visual del mapa"
-      ></canvas>
+</section>
 
-    </section>
+  </main>  <script type="module">
 
-    <aside class="editor-panel">
+    const selector =
+      document.querySelector(
+        "#editor-selector"
+      );
 
-      <section>
+    const container =
+      document.querySelector(
+        "#editor-container"
+      );
 
-        <h2>Elemento</h2>
+    const frame =
+      document.querySelector(
+        "#editor-frame"
+      );
 
-        <label>
-          Elemento
+    const activeEditorName =
+      document.querySelector(
+        "#active-editor-name"
+      );
 
-          <select id="element-select">
-            <option value="">
-              Seleccionar...
-            </option>
-          </select>
-        </label>
+    const openRaptor =
+      document.querySelector(
+        "#open-raptor-editor"
+      );
 
-        <div
-          id="element-info"
-          class="element-info"
-        >
-          Ningún elemento seleccionado.
-        </div>
+    const openFood =
+      document.querySelector(
+        "#open-food-editor"
+      );
 
-      </section>
+    const backButton =
+      document.querySelector(
+        "#back-to-editor-selector"
+      );
 
-      <section>
+    function openEditor(
+      url,
+      name
+    ) {
+      selector.hidden = true;
+      container.hidden = false;
 
-        <h2>Raptor</h2>
+      activeEditorName.textContent =
+        name;
 
-        <label>
-          Variante
+      frame.src = url;
+    }
 
-          <select id="raptor-sheet">
-            <option value="">
-              Seleccionar...
-            </option>
-          </select>
-        </label>
+    function closeEditor() {
+      frame.src = "about:blank";
 
-        <label>
-          Perfil
+      container.hidden = true;
+      selector.hidden = false;
 
-          <select id="raptor-profile">
+      activeEditorName.textContent =
+        "Editor";
+    }
 
-            <option value="lateral">
-              Lateral
-            </option>
+    openRaptor.addEventListener(
+      "click",
+      () => {
+        openEditor(
+          "/editor/raptor.html",
+          "Editor de Raptors"
+        );
+      }
+    );
 
-            <option value="front">
-              Front
-            </option>
+    openFood.addEventListener(
+      "click",
+      () => {
+        openEditor(
+          "/editor/food.html",
+          "Editor de Food"
+        );
+      }
+    );
 
-            <option value="back">
-              Back
-            </option>
+    backButton.addEventListener(
+      "click",
+      closeEditor
+    );
 
-          </select>
-        </label>
-
-      </section>
-
-      <section>
-
-        <h2>Transformación</h2>
-
-        <label>
-          X
-
-          <input
-            id="element-x"
-            type="number"
-            step="1"
-          >
-        </label>
-
-        <label>
-          Y
-
-          <input
-            id="element-y"
-            type="number"
-            step="1"
-          >
-        </label>
-
-        <label>
-          Escala
-
-          <input
-            id="element-scale"
-            type="number"
-            step="0.0001"
-            min="0.01"
-          >
-        </label>
-
-        <label class="checkbox-label">
-
-          <input
-            id="element-mirror"
-            type="checkbox"
-          >
-
-          Mirror horizontal
-
-        </label>
-
-        <label>
-          Layer
-
-          <input
-            id="element-layer"
-            type="number"
-            step="1"
-          >
-        </label>
-
-        <button
-          id="apply-element"
-          type="button"
-        >
-          Aplicar cambios
-        </button>
-
-      </section>
-
-      <section>
-
-        <h2>Ubicaciones</h2>
-
-        <div
-          id="element-list"
-          class="element-list"
-        ></div>
-
-        <button
-          id="add-element"
-          type="button"
-        >
-          Añadir Raptor
-        </button>
-
-        <button
-          id="delete-element"
-          type="button"
-        >
-          Eliminar seleccionado
-        </button>
-
-        <button
-          id="reset-map"
-          type="button"
-        >
-          Restaurar mapa
-        </button>
-
-      </section>
-
-      <section>
-
-        <h2>JSON</h2>
-
-        <button
-          id="export-json"
-          type="button"
-        >
-          Exportar JSON
-        </button>
-
-        <button
-          id="copy-json"
-          type="button"
-        >
-          Copiar JSON
-        </button>
-
-        <button
-          id="import-json"
-          type="button"
-        >
-          Importar JSON
-        </button>
-
-        <textarea
-          id="json-data"
-          rows="12"
-          spellcheck="false"
-          placeholder="Aquí puedes pegar un JSON del mapa..."
-        ></textarea>
-
-      </section>
-
-      <div
-        id="editor-message"
-        role="status"
-        aria-live="polite"
-      ></div>
-
-    </aside>
-
-  </main>
-
-  <script
-    type="module"
-    src="./editor.js"
-  ></script>
-
-</body>
+  </script></body>
 </html>
