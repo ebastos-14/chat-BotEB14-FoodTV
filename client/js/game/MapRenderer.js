@@ -4,9 +4,6 @@ const RAPTOR_MAP_URL =
 const FOOD_MAP_URL =
   "/assets/food/map-food.json";
 
-const COUNTER_URL =
-  "/assets/restaurant/Mostrador.png";
-
 export class MapRenderer {
   constructor(canvas) {
     if (!canvas) {
@@ -27,16 +24,6 @@ export class MapRenderer {
 
     this.backgroundImage = null;
 
-    /*
-     * Capa visual fija del mostrador.
-     *
-     * Tiene el mismo tamaño que el mapa:
-     * 1536 x 1536.
-     *
-     * Se renderiza en layer 3.
-     */
-    this.counterImage = null;
-
     this.raptorMap = null;
     this.foodMap = null;
 
@@ -56,6 +43,15 @@ export class MapRenderer {
      *
      * Esto será modificado posteriormente
      * por GameState y por los comandos de chat.
+     *
+     * Ejemplo:
+     *
+     * raptors:
+     * {
+     *   Lateral_L_1: {
+     *     sprite: "Raptor_Mod.png"
+     *   }
+     * }
      */
     this.runtime = {
       raptors: new Map(),
@@ -94,6 +90,7 @@ export class MapRenderer {
 
     /*
      * El fondo pertenece al mapa principal.
+     * Ambos JSON deberían apuntar al mismo fondo.
      */
     const backgroundAsset =
       raptorMap.background?.asset ||
@@ -105,19 +102,9 @@ export class MapRenderer {
       );
     }
 
-    /*
-     * Cargar fondo y mostrador.
-     *
-     * Ambos deben estar disponibles antes
-     * de considerar cargado el renderer.
-     */
-    await Promise.all([
-      this.loadBackground(
-        backgroundAsset
-      ),
-
-      this.loadCounter()
-    ]);
+    await this.loadBackground(
+      backgroundAsset
+    );
 
     this.buildLayout();
 
@@ -181,7 +168,9 @@ export class MapRenderer {
     }
   }
 
-  async loadBackground(source) {
+  async loadBackground(
+    source
+  ) {
     return new Promise(
       (resolve, reject) => {
         const image =
@@ -208,47 +197,6 @@ export class MapRenderer {
     );
   }
 
-  async loadCounter() {
-    return new Promise(
-      (resolve, reject) => {
-        const image =
-          new Image();
-
-        image.onload = () => {
-          /*
-           * El mostrador debe tener exactamente
-           * el tamaño del mapa.
-           */
-          if (
-            image.naturalWidth !== 1536 ||
-            image.naturalHeight !== 1536
-          ) {
-            console.warn(
-              `Mostrador.png tiene tamaño ${image.naturalWidth}x${image.naturalHeight}. ` +
-              "Se esperaba 1536x1536."
-            );
-          }
-
-          this.counterImage =
-            image;
-
-          resolve(image);
-        };
-
-        image.onerror = () => {
-          reject(
-            new Error(
-              `No se pudo cargar la capa del mostrador: ${COUNTER_URL}`
-            )
-          );
-        };
-
-        image.src =
-          COUNTER_URL;
-      }
-    );
-  }
-
   buildLayout() {
     this.layout.raptors.clear();
     this.layout.food.clear();
@@ -257,6 +205,20 @@ export class MapRenderer {
      * =========================
      * RAPTORS
      * =========================
+     *
+     * Importamos:
+     * - id
+     * - type
+     * - profile
+     * - position
+     * - scale
+     * - mirror
+     * - layer
+     *
+     * NO importamos:
+     * - sprite activo
+     * - assignment
+     * - imagen
      */
 
     for (
@@ -310,6 +272,16 @@ export class MapRenderer {
      * =========================
      * FOOD
      * =========================
+     *
+     * Las entidades "menu" son
+     * ignoradas por el RenderMap.
+     *
+     * Esas coordenadas sirven al
+     * editor para saber de dónde
+     * cortar sprites.
+     *
+     * El juego principal NO las
+     * necesita aquí.
      */
 
     for (
@@ -361,6 +333,13 @@ export class MapRenderer {
             Number(entity.layer) ||
             0,
 
+          /*
+           * La sección es una
+           * propiedad lógica de la
+           * ubicación.
+           *
+           * NO es todavía un sprite.
+           */
           section:
             Number(entity.section) ||
             1
@@ -369,6 +348,19 @@ export class MapRenderer {
     }
   }
 
+  /*
+   * Permite que GameState entregue
+   * el estado visual actual.
+   *
+   * Ejemplo:
+   *
+   * renderer.setRuntimeRaptor(
+   *   "Lateral_L_1",
+   *   {
+   *     sprite: "Raptor_Mod.png"
+   *   }
+   * );
+   */
   setRuntimeRaptor(
     locationId,
     data
@@ -607,20 +599,12 @@ export class MapRenderer {
     this.ctx.imageSmoothingEnabled =
       false;
 
-    /*
-     * =====================================================
-     * CAPA 0 — FONDO
-     * =====================================================
-     */
-
     this.renderBackground();
 
     /*
-     * =====================================================
-     * ENTIDADES DINÁMICAS
-     * =====================================================
+     * Los objetos se mezclan en una
+     * sola lista para respetar layer.
      */
-
     const renderList = [];
 
     for (
@@ -634,6 +618,13 @@ export class MapRenderer {
           id
         );
 
+      /*
+       * Si no existe estado runtime,
+       * no dibujamos sprite.
+       *
+       * La ubicación sí existe,
+       * pero está vacía.
+       */
       if (!runtime) {
         continue;
       }
@@ -667,19 +658,6 @@ export class MapRenderer {
       });
     }
 
-    /*
-     * =====================================================
-     * ORDEN POR CAPAS
-     * =====================================================
-     *
-     * Las entidades se dibujan antes de la capa
-     * estática del mostrador cuando tienen layer <= 3.
-     *
-     * El mostrador se añade posteriormente en layer 3,
-     * por lo que queda visualmente encima de las entidades
-     * de layer 3.
-     */
-
     renderList.sort(
       (a, b) =>
         (a.layout.layer || 0) -
@@ -710,23 +688,6 @@ export class MapRenderer {
         );
       }
     }
-
-    /*
-     * =====================================================
-     * CAPA 3 — MOSTRADOR
-     * =====================================================
-     *
-     * El archivo tiene el mismo tamaño que el mapa:
-     * 1536 x 1536.
-     *
-     * Por eso usamos exactamente:
-     *
-     * offsetX / offsetY
-     * width * scale
-     * height * scale
-     */
-
-    this.renderCounter();
   }
 
   renderBackground() {
@@ -754,36 +715,16 @@ export class MapRenderer {
     );
   }
 
-  renderCounter() {
-    if (!this.counterImage) {
-      return;
-    }
-
-    const {
-      width,
-      height
-    } = this.getMapSize();
-
-    this.ctx.save();
-
-    this.ctx.imageSmoothingEnabled =
-      false;
-
-    this.ctx.drawImage(
-      this.counterImage,
-      this.offsetX,
-      this.offsetY,
-      width * this.scale,
-      height * this.scale
-    );
-
-    this.ctx.restore();
-  }
-
   renderRaptor(
     layout,
     runtime
   ) {
+    /*
+     * El sprite viene del runtime.
+     *
+     * El mapa NO decide cuál Raptor
+     * está ocupando la ubicación.
+     */
     if (!runtime.sprite) {
       return;
     }
@@ -792,6 +733,11 @@ export class MapRenderer {
       runtime.source;
 
     if (!source) {
+      /*
+       * Por ahora dejamos esta parte
+       * preparada para el sistema de
+       * sprites de Raptor.
+       */
       return;
     }
 
@@ -874,6 +820,13 @@ export class MapRenderer {
     layout,
     runtime
   ) {
+    /*
+     * Igual que los Raptors:
+     *
+     * layout = posición
+     * runtime = sprite/estado
+     */
+
     if (!runtime.sprite) {
       return;
     }
