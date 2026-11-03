@@ -4,6 +4,9 @@ const RAPTOR_MAP_URL =
 const FOOD_MAP_URL =
   "/assets/food/map-food.json";
 
+const RENDER_LAYERS_URL =
+  "/assets/restaurant/render-layers.json";
+
 export class MapRenderer {
   constructor(canvas) {
     if (!canvas) {
@@ -26,12 +29,13 @@ export class MapRenderer {
 
     this.raptorMap = null;
     this.foodMap = null;
+    this.renderLayersConfig = null;
 
     /*
      * Layout fijo.
      *
-     * Aquí solamente guardamos las posiciones
-     * definidas por los editores.
+     * Contiene únicamente las posiciones
+     * definidas por los mapas/editor.
      */
     this.layout = {
       raptors: new Map(),
@@ -39,19 +43,20 @@ export class MapRenderer {
     };
 
     /*
-     * Estado visual/runtime.
-     *
-     * Esto será modificado posteriormente
-     * por GameState y por los comandos de chat.
+     * Capas visuales fijas.
      *
      * Ejemplo:
      *
-     * raptors:
-     * {
-     *   Lateral_L_1: {
-     *     sprite: "Raptor_Mod.png"
-     *   }
-     * }
+     * layer 0 -> fondo
+     * layer 3 -> Mostrador
+     */
+    this.renderLayers = [];
+
+    /*
+     * Estado visual/runtime.
+     *
+     * Posteriormente será controlado por
+     * GameState y por los comandos.
      */
     this.runtime = {
       raptors: new Map(),
@@ -69,10 +74,12 @@ export class MapRenderer {
   async load() {
     const [
       raptorMap,
-      foodMap
+      foodMap,
+      renderLayersConfig
     ] = await Promise.all([
       this.loadJson(RAPTOR_MAP_URL),
-      this.loadJson(FOOD_MAP_URL)
+      this.loadJson(FOOD_MAP_URL),
+      this.loadJson(RENDER_LAYERS_URL)
     ]);
 
     this.validateMap(
@@ -85,12 +92,18 @@ export class MapRenderer {
       "food"
     );
 
+    this.validateRenderLayers(
+      renderLayersConfig
+    );
+
     this.raptorMap = raptorMap;
     this.foodMap = foodMap;
+    this.renderLayersConfig =
+      renderLayersConfig;
 
     /*
-     * El fondo pertenece al mapa principal.
-     * Ambos JSON deberían apuntar al mismo fondo.
+     * El fondo principal sigue siendo
+     * la imagen completa del restaurante.
      */
     const backgroundAsset =
       raptorMap.background?.asset ||
@@ -105,6 +118,12 @@ export class MapRenderer {
     await this.loadBackground(
       backgroundAsset
     );
+
+    /*
+     * Preparamos las capas visuales
+     * adicionales definidas en JSON.
+     */
+    await this.loadRenderLayers();
 
     this.buildLayout();
 
@@ -130,7 +149,10 @@ export class MapRenderer {
     return response.json();
   }
 
-  validateMap(map, moduleName) {
+  validateMap(
+    map,
+    moduleName
+  ) {
     if (
       !map ||
       typeof map !== "object"
@@ -141,7 +163,9 @@ export class MapRenderer {
     }
 
     if (
-      !Array.isArray(map.entities)
+      !Array.isArray(
+        map.entities
+      )
     ) {
       throw new Error(
         `El mapa ${moduleName} no contiene entities.`
@@ -151,20 +175,84 @@ export class MapRenderer {
     const ids =
       new Set();
 
-    for (const entity of map.entities) {
+    for (
+      const entity of map.entities
+    ) {
       if (!entity.id) {
         throw new Error(
           `Existe una entidad sin ID en el mapa ${moduleName}.`
         );
       }
 
-      if (ids.has(entity.id)) {
+      if (
+        ids.has(entity.id)
+      ) {
         throw new Error(
           `ID duplicado en ${moduleName}: ${entity.id}`
         );
       }
 
       ids.add(entity.id);
+    }
+  }
+
+  validateRenderLayers(
+    config
+  ) {
+    if (
+      !config ||
+      typeof config !== "object"
+    ) {
+      throw new Error(
+        "render-layers.json no contiene un objeto válido."
+      );
+    }
+
+    if (
+      !Array.isArray(
+        config.layers
+      )
+    ) {
+      throw new Error(
+        "render-layers.json no contiene layers."
+      );
+    }
+
+    const ids =
+      new Set();
+
+    for (
+      const layer of config.layers
+    ) {
+      if (!layer.id) {
+        throw new Error(
+          "Existe una capa visual sin ID."
+        );
+      }
+
+      if (
+        ids.has(layer.id)
+      ) {
+        throw new Error(
+          `ID duplicado en render-layers.json: ${layer.id}`
+        );
+      }
+
+      ids.add(layer.id);
+
+      if (!layer.asset) {
+        throw new Error(
+          `La capa ${layer.id} no tiene asset.`
+        );
+      }
+
+      if (
+        typeof layer.layer !== "number"
+      ) {
+        throw new Error(
+          `La capa ${layer.id} necesita un layer numérico.`
+        );
+      }
     }
   }
 
@@ -197,30 +285,131 @@ export class MapRenderer {
     );
   }
 
+  async loadRenderLayers() {
+    this.renderLayers = [];
+
+    for (
+      const layerConfig of
+      this.renderLayersConfig.layers
+    ) {
+      /*
+       * El fondo principal se dibuja
+       * mediante renderBackground().
+       *
+       * No lo duplicamos aquí.
+       */
+      if (
+        layerConfig.asset ===
+        this.raptorMap.background?.asset
+      ) {
+        continue;
+      }
+
+      const image =
+        await this.loadImageAsync(
+          layerConfig.asset
+        );
+
+      this.renderLayers.push({
+        id:
+          layerConfig.id,
+
+        type:
+          layerConfig.type ||
+          "image",
+
+        asset:
+          layerConfig.asset,
+
+        layer:
+          Number(
+            layerConfig.layer
+          ),
+
+        priority:
+          Number(
+            layerConfig.priority
+          ) || 0,
+
+        image
+      });
+    }
+
+    /*
+     * Orden principal por layer.
+     *
+     * priority permite resolver dos elementos
+     * que estén exactamente en la misma capa.
+     */
+    this.renderLayers.sort(
+      (a, b) => {
+        if (
+          a.layer !==
+          b.layer
+        ) {
+          return (
+            a.layer -
+            b.layer
+          );
+        }
+
+        return (
+          a.priority -
+          b.priority
+        );
+      }
+    );
+  }
+
+  loadImageAsync(
+    source
+  ) {
+    const cached =
+      this.imageCache.get(
+        source
+      );
+
+    if (cached) {
+      return Promise.resolve(
+        cached
+      );
+    }
+
+    return new Promise(
+      (resolve, reject) => {
+        const image =
+          new Image();
+
+        image.onload = () => {
+          this.imageCache.set(
+            source,
+            image
+          );
+
+          resolve(image);
+        };
+
+        image.onerror = () => {
+          reject(
+            new Error(
+              `No se pudo cargar imagen de capa: ${source}`
+            )
+          );
+        };
+
+        image.src =
+          source;
+      }
+    );
+  }
+
   buildLayout() {
     this.layout.raptors.clear();
     this.layout.food.clear();
 
     /*
-     * =========================
      * RAPTORS
-     * =========================
-     *
-     * Importamos:
-     * - id
-     * - type
-     * - profile
-     * - position
-     * - scale
-     * - mirror
-     * - layer
-     *
-     * NO importamos:
-     * - sprite activo
-     * - assignment
-     * - imagen
      */
-
     for (
       const entity of
       this.raptorMap.entities
@@ -235,8 +424,11 @@ export class MapRenderer {
       this.layout.raptors.set(
         entity.id,
         {
-          id: entity.id,
-          type: "raptor",
+          id:
+            entity.id,
+
+          type:
+            "raptor",
 
           profile:
             entity.profile ||
@@ -255,39 +447,36 @@ export class MapRenderer {
           },
 
           scale:
-            Number(entity.scale) ||
-            1,
+            Number(
+              entity.scale
+            ) || 1,
 
           mirror:
-            Boolean(entity.mirror),
+            Boolean(
+              entity.mirror
+            ),
 
           layer:
-            Number(entity.layer) ||
-            0
+            Number(
+              entity.layer
+            ) || 0
         }
       );
     }
 
     /*
-     * =========================
-     * FOOD
-     * =========================
-     *
-     * Las entidades "menu" son
-     * ignoradas por el RenderMap.
-     *
-     * Esas coordenadas sirven al
-     * editor para saber de dónde
-     * cortar sprites.
-     *
-     * El juego principal NO las
-     * necesita aquí.
+     * FOOD / DRINK / BAG
      */
-
     for (
       const entity of
       this.foodMap.entities
     ) {
+      /*
+       * Las 8 entidades Menu_1...Menu_8
+       * son solamente referencias del
+       * spritesheet y no se renderizan
+       * sobre el restaurante.
+       */
       if (
         entity.type ===
         "menu"
@@ -300,7 +489,9 @@ export class MapRenderer {
           "food",
           "drink",
           "bag"
-        ].includes(entity.type)
+        ].includes(
+          entity.type
+        )
       ) {
         continue;
       }
@@ -308,7 +499,8 @@ export class MapRenderer {
       this.layout.food.set(
         entity.id,
         {
-          id: entity.id,
+          id:
+            entity.id,
 
           type:
             entity.type,
@@ -326,41 +518,24 @@ export class MapRenderer {
           },
 
           scale:
-            Number(entity.scale) ||
-            1,
+            Number(
+              entity.scale
+            ) || 1,
 
           layer:
-            Number(entity.layer) ||
-            0,
+            Number(
+              entity.layer
+            ) || 0,
 
-          /*
-           * La sección es una
-           * propiedad lógica de la
-           * ubicación.
-           *
-           * NO es todavía un sprite.
-           */
           section:
-            Number(entity.section) ||
-            1
+            Number(
+              entity.section
+            ) || 1
         }
       );
     }
   }
 
-  /*
-   * Permite que GameState entregue
-   * el estado visual actual.
-   *
-   * Ejemplo:
-   *
-   * renderer.setRuntimeRaptor(
-   *   "Lateral_L_1",
-   *   {
-   *     sprite: "Raptor_Mod.png"
-   *   }
-   * );
-   */
   setRuntimeRaptor(
     locationId,
     data
@@ -452,10 +627,14 @@ export class MapRenderer {
   getMapSize() {
     const width =
       Number(
-        this.raptorMap?.background?.width
+        this.raptorMap
+          ?.background
+          ?.width
       ) ||
       Number(
-        this.foodMap?.background?.width
+        this.foodMap
+          ?.background
+          ?.width
       ) ||
       this.backgroundImage
         ?.naturalWidth ||
@@ -463,10 +642,14 @@ export class MapRenderer {
 
     const height =
       Number(
-        this.raptorMap?.background?.height
+        this.raptorMap
+          ?.background
+          ?.height
       ) ||
       Number(
-        this.foodMap?.background?.height
+        this.foodMap
+          ?.background
+          ?.height
       ) ||
       this.backgroundImage
         ?.naturalHeight ||
@@ -496,13 +679,15 @@ export class MapRenderer {
     this.offsetX =
       (
         this.canvas.width -
-        width * this.scale
+        width *
+          this.scale
       ) / 2;
 
     this.offsetY =
       (
         this.canvas.height -
-        height * this.scale
+        height *
+          this.scale
       ) / 2;
   }
 
@@ -513,11 +698,13 @@ export class MapRenderer {
     return {
       x:
         this.offsetX +
-        x * this.scale,
+        x *
+          this.scale,
 
       y:
         this.offsetY +
-        y * this.scale
+        y *
+          this.scale
     };
   }
 
@@ -599,14 +786,21 @@ export class MapRenderer {
     this.ctx.imageSmoothingEnabled =
       false;
 
+    /*
+     * 1. FONDO
+     */
     this.renderBackground();
 
     /*
-     * Los objetos se mezclan en una
-     * sola lista para respetar layer.
+     * 2. Construimos una lista única
+     *    de todos los elementos que
+     *    necesitan respetar capas.
      */
     const renderList = [];
 
+    /*
+     * RAPTORS
+     */
     for (
       const [
         id,
@@ -618,24 +812,28 @@ export class MapRenderer {
           id
         );
 
-      /*
-       * Si no existe estado runtime,
-       * no dibujamos sprite.
-       *
-       * La ubicación sí existe,
-       * pero está vacía.
-       */
       if (!runtime) {
         continue;
       }
 
       renderList.push({
-        kind: "raptor",
+        kind:
+          "raptor",
+
         layout,
-        runtime
+
+        runtime,
+
+        layer:
+          layout.layer || 0,
+
+        priority: 0
       });
     }
 
+    /*
+     * FOOD / DRINK / BAG
+     */
     for (
       const [
         id,
@@ -652,18 +850,96 @@ export class MapRenderer {
       }
 
       renderList.push({
-        kind: "food",
+        kind:
+          "food",
+
         layout,
-        runtime
+
+        runtime,
+
+        layer:
+          layout.layer || 0,
+
+        priority: 0
       });
     }
 
+    /*
+     * CAPAS VISUALES FIJAS
+     *
+     * Aquí entra Mostrador.png.
+     *
+     * No se pega directamente sobre
+     * el canvas antes/después de todo.
+     *
+     * Forma parte del mismo sistema
+     * de ordenamiento.
+     */
+    for (
+      const layer of
+      this.renderLayers
+    ) {
+      renderList.push({
+        kind:
+          "layer",
+
+        layer,
+
+        runtime: null,
+
+        priority:
+          layer.priority
+      });
+    }
+
+    /*
+     * Orden final.
+     *
+     * Primero layer.
+     * Si coinciden, priority.
+     */
     renderList.sort(
-      (a, b) =>
-        (a.layout.layer || 0) -
-        (b.layout.layer || 0)
+      (a, b) => {
+        const layerA =
+          Number(
+            a.layer
+          ) || 0;
+
+        const layerB =
+          Number(
+            b.layer
+          ) || 0;
+
+        if (
+          layerA !==
+          layerB
+        ) {
+          return (
+            layerA -
+            layerB
+          );
+        }
+
+        const priorityA =
+          Number(
+            a.priority
+          ) || 0;
+
+        const priorityB =
+          Number(
+            b.priority
+          ) || 0;
+
+        return (
+          priorityA -
+          priorityB
+        );
+      }
     );
 
+    /*
+     * Render final.
+     */
     for (
       const item of
       renderList
@@ -676,6 +952,8 @@ export class MapRenderer {
           item.layout,
           item.runtime
         );
+
+        continue;
       }
 
       if (
@@ -685,6 +963,17 @@ export class MapRenderer {
         this.renderFood(
           item.layout,
           item.runtime
+        );
+
+        continue;
+      }
+
+      if (
+        item.kind ===
+        "layer"
+      ) {
+        this.renderFixedLayer(
+          item.layer
         );
       }
     }
@@ -710,8 +999,41 @@ export class MapRenderer {
       this.backgroundImage,
       this.offsetX,
       this.offsetY,
-      width * this.scale,
-      height * this.scale
+      width *
+        this.scale,
+      height *
+        this.scale
+    );
+  }
+
+  renderFixedLayer(
+    layer
+  ) {
+    if (
+      !layer ||
+      !layer.image
+    ) {
+      return;
+    }
+
+    const {
+      width,
+      height
+    } = this.getMapSize();
+
+    /*
+     * Mostrador.png tiene exactamente
+     * 1536 x 1536, por lo que se dibuja
+     * exactamente encima del mapa completo.
+     */
+    this.ctx.drawImage(
+      layer.image,
+      this.offsetX,
+      this.offsetY,
+      width *
+        this.scale,
+      height *
+        this.scale
     );
   }
 
@@ -719,12 +1041,6 @@ export class MapRenderer {
     layout,
     runtime
   ) {
-    /*
-     * El sprite viene del runtime.
-     *
-     * El mapa NO decide cuál Raptor
-     * está ocupando la ubicación.
-     */
     if (!runtime.sprite) {
       return;
     }
@@ -733,11 +1049,6 @@ export class MapRenderer {
       runtime.source;
 
     if (!source) {
-      /*
-       * Por ahora dejamos esta parte
-       * preparada para el sistema de
-       * sprites de Raptor.
-       */
       return;
     }
 
@@ -773,9 +1084,12 @@ export class MapRenderer {
     this.ctx.imageSmoothingEnabled =
       false;
 
-    if (layout.mirror) {
+    if (
+      layout.mirror
+    ) {
       this.ctx.translate(
-        position.x + width,
+        position.x +
+          width,
         position.y
       );
 
@@ -786,12 +1100,10 @@ export class MapRenderer {
 
       this.ctx.drawImage(
         image,
-
         source.x,
         source.y,
         source.width,
         source.height,
-
         0,
         0,
         width,
@@ -800,12 +1112,10 @@ export class MapRenderer {
     } else {
       this.ctx.drawImage(
         image,
-
         source.x,
         source.y,
         source.width,
         source.height,
-
         position.x,
         position.y,
         width,
@@ -820,13 +1130,6 @@ export class MapRenderer {
     layout,
     runtime
   ) {
-    /*
-     * Igual que los Raptors:
-     *
-     * layout = posición
-     * runtime = sprite/estado
-     */
-
     if (!runtime.sprite) {
       return;
     }
@@ -872,12 +1175,10 @@ export class MapRenderer {
 
     this.ctx.drawImage(
       image,
-
       source.x,
       source.y,
       source.width,
       source.height,
-
       position.x,
       position.y,
       width,
