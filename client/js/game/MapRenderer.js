@@ -49,22 +49,9 @@ export class MapRenderer {
 
     this.imageCache = new Map();
     this.loadingImages = new Set();
-
-    /*
-     * Modo de diagnóstico temporal.
-     *
-     * Cuando está activo:
-     * - Mostrador muestra un borde rojo.
-     * - Se escribe información en consola.
-     */
-    this.debugRenderLayers = true;
   }
 
   async load() {
-    console.log(
-      "[MapRenderer] Iniciando carga..."
-    );
-
     const [
       raptorMap,
       foodMap,
@@ -74,19 +61,6 @@ export class MapRenderer {
       this.loadJson(FOOD_MAP_URL),
       this.loadJson(RENDER_LAYERS_URL)
     ]);
-
-    console.log(
-      "[MapRenderer] map-raptors.json cargado."
-    );
-
-    console.log(
-      "[MapRenderer] map-food.json cargado."
-    );
-
-    console.log(
-      "[MapRenderer] render-layers.json cargado:",
-      renderLayersConfig
-    );
 
     this.validateMap(
       raptorMap,
@@ -128,15 +102,6 @@ export class MapRenderer {
     this.resize();
 
     this.render();
-
-    console.log(
-      "[MapRenderer] Carga completada."
-    );
-
-    console.log(
-      "[MapRenderer] Capas activas:",
-      this.renderLayers
-    );
 
     return this;
   }
@@ -272,25 +237,12 @@ export class MapRenderer {
   async loadBackground(
     source
   ) {
-    console.log(
-      "[MapRenderer] Cargando fondo:",
-      source
-    );
-
     return new Promise(
       (resolve, reject) => {
         const image =
           new Image();
 
         image.onload = () => {
-          console.log(
-            "[MapRenderer] Fondo cargado:",
-            source,
-            image.naturalWidth,
-            "x",
-            image.naturalHeight
-          );
-
           this.backgroundImage =
             image;
 
@@ -298,11 +250,6 @@ export class MapRenderer {
         };
 
         image.onerror = () => {
-          console.error(
-            "[MapRenderer] ERROR cargando fondo:",
-            source
-          );
-
           reject(
             new Error(
               `No se pudo cargar el fondo: ${source}`
@@ -319,89 +266,49 @@ export class MapRenderer {
   async loadRenderLayers() {
     this.renderLayers = [];
 
-    console.log(
-      "[MapRenderer] Procesando capas..."
-    );
-
     for (
       const layerConfig of
       this.renderLayersConfig.layers
     ) {
       /*
-       * El fondo principal ya se dibuja
+       * El fondo principal se dibuja
        * mediante renderBackground().
        */
       if (
         layerConfig.asset ===
         this.raptorMap.background?.asset
       ) {
-        console.log(
-          "[MapRenderer] Fondo omitido de capas:",
-          layerConfig.id
-        );
-
         continue;
       }
 
-      console.log(
-        "[MapRenderer] Cargando capa:",
-        layerConfig.id,
-        layerConfig.asset,
-        "layer:",
-        layerConfig.layer
-      );
-
-      try {
-        const image =
-          await this.loadImageAsync(
-            layerConfig.asset
-          );
-
-        this.renderLayers.push({
-          id:
-            layerConfig.id,
-
-          type:
-            layerConfig.type ||
-            "image",
-
-          asset:
-            layerConfig.asset,
-
-          layer:
-            Number(
-              layerConfig.layer
-            ),
-
-          priority:
-            Number(
-              layerConfig.priority
-            ) || 0,
-
-          image
-        });
-
-        console.log(
-          "[MapRenderer] Capa cargada correctamente:",
-          layerConfig.id,
+      const image =
+        await this.loadImageAsync(
           layerConfig.asset
         );
-      } catch (error) {
-        console.error(
-          "[MapRenderer] ERROR cargando capa:",
-          layerConfig.id,
-          layerConfig.asset,
-          error
-        );
 
-        /*
-         * No ocultamos el error.
-         *
-         * Esto permite que el resto del juego
-         * siga funcionando para diagnosticar
-         * la ruta del asset.
-         */
-      }
+      this.renderLayers.push({
+        id:
+          layerConfig.id,
+
+        type:
+          layerConfig.type ||
+          "image",
+
+        asset:
+          layerConfig.asset,
+
+        layer:
+          Number(
+            layerConfig.layer
+          ),
+
+        priority:
+          Number(
+            layerConfig.priority
+          ) || 0,
+
+        image
+      });
     }
 
     this.renderLayers.sort(
@@ -447,14 +354,6 @@ export class MapRenderer {
           this.imageCache.set(
             source,
             image
-          );
-
-          console.log(
-            "[MapRenderer] Imagen cargada:",
-            source,
-            image.naturalWidth,
-            "x",
-            image.naturalHeight
           );
 
           resolve(image);
@@ -852,8 +751,7 @@ export class MapRenderer {
       false;
 
     /*
-     * CAPA 0
-     * Fondo del restaurante.
+     * Fondo.
      */
     this.renderBackground();
 
@@ -926,7 +824,7 @@ export class MapRenderer {
     }
 
     /*
-     * CAPAS FIJAS
+     * CAPAS VISUALES FIJAS.
      *
      * Aquí entra Mostrador.png.
      */
@@ -946,7 +844,8 @@ export class MapRenderer {
     }
 
     /*
-     * Orden definitivo.
+     * Orden final por layer
+     * y después priority.
      */
     renderList.sort(
       (a, b) => {
@@ -996,7 +895,7 @@ export class MapRenderer {
     );
 
     /*
-     * Render.
+     * Render final.
      */
     for (
       const item of
@@ -1079,15 +978,6 @@ export class MapRenderer {
       height
     } = this.getMapSize();
 
-    this.ctx.save();
-
-    this.ctx.imageSmoothingEnabled =
-      false;
-
-    /*
-     * La imagen ocupa exactamente
-     * el mismo espacio que el mapa.
-     */
     this.ctx.drawImage(
       layer.image,
       this.offsetX,
@@ -1097,53 +987,6 @@ export class MapRenderer {
       height *
         this.scale
     );
-
-    /*
-     * DIAGNÓSTICO TEMPORAL
-     *
-     * Solo para confirmar que la capa
-     * realmente está siendo dibujada.
-     */
-    if (
-      this.debugRenderLayers &&
-      layer.id ===
-        "mostrador"
-    ) {
-      const screenWidth =
-        width *
-        this.scale;
-
-      const screenHeight =
-        height *
-        this.scale;
-
-      this.ctx.strokeStyle =
-        "#ff0000";
-
-      this.ctx.lineWidth =
-        3;
-
-      this.ctx.strokeRect(
-        this.offsetX,
-        this.offsetY,
-        screenWidth,
-        screenHeight
-      );
-
-      this.ctx.fillStyle =
-        "#ff0000";
-
-      this.ctx.font =
-        "bold 16px monospace";
-
-      this.ctx.fillText(
-        "MOSTRADOR LAYER 3 OK",
-        this.offsetX + 10,
-        this.offsetY + 24
-      );
-    }
-
-    this.ctx.restore();
   }
 
   renderRaptor(
