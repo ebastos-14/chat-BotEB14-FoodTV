@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "mapId": "restaurant-main",
+  "canvas": {
+    "width": 1536,
+    "height": 1536
+  },
+  "layers": [
+    {
+      "id": "restaurant-background",
+      "type": "image",
+      "asset": "/assets/restaurant/map-background.png",
+      "layer": 0
+    },
+    {
+      "id": "mostrador",
+      "type": "image",
+      "asset": "/assets/restaurant/Mostrador.png",
+      "layer": 3
+    }
+  ]
+}
