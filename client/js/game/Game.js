@@ -1,95 +1,247 @@
-import { GAME_CONFIG } from "../config.js";
-import { assetRegistry } from "../assets/index.js";
-import { raptorAssignments } from "../config/raptorAssignments.js";
-import mapDefinition from "../../assets/raptors/map-raptors.json" with { type: "json" };
 import { MapRenderer } from "./MapRenderer.js";
+import { GameState } from "./GameState.js";
 
 export class Game {
-constructor(canvas) {
-this.canvas = canvas;
-this.ctx = canvas.getContext("2d");
+  constructor(canvas) {
+    if (!canvas) {
+      throw new Error(
+        "Game necesita un elemento canvas."
+      );
+    }
 
-if (!this.ctx) {
-  throw new Error("No se pudo obtener el contexto 2D del canvas.");
-}
+    this.canvas = canvas;
 
-this.running = false;
-this.lastTime = 0;
+    this.state =
+      new GameState();
 
-this.map = mapDefinition;
-this.raptorAssignments = raptorAssignments;
+    this.renderer =
+      new MapRenderer(
+        canvas
+      );
 
-this.mapRenderer = new MapRenderer(
-  this.ctx,
-  this.map,
-  this.raptorAssignments
-);
+    this.running = false;
+    this.lastFrameTime = 0;
 
-this.resize();
+    /*
+     * Cuando cambia el estado,
+     * el renderer vuelve a dibujar.
+     */
+    this.unsubscribe =
+      this.state.subscribe(
+        () => {
+          this.syncRenderer();
+        }
+      );
+  }
 
-}
+  async initialize() {
+    /*
+     * Carga:
+     * - mapa de Raptors
+     * - mapa de Food
+     * - fondo
+     *
+     * NO carga:
+     * - raptorAssignments.json
+     * - un Raptor activo
+     * - una comida activa
+     */
+    await this.renderer.load();
 
-resize() {
-this.canvas.width = GAME_CONFIG.canvas.width;
-this.canvas.height = GAME_CONFIG.canvas.height;
-}
+    /*
+     * Inicialmente el juego
+     * no tiene entidades activas.
+     */
+    this.syncRenderer();
 
-start() {
-if (this.running) return;
+    return this;
+  }
 
-this.running = true;
-this.lastTime = performance.now();
+  syncRenderer() {
+    /*
+     * Primero limpiamos el estado
+     * visual anterior.
+     */
 
-requestAnimationFrame((time) => this.loop(time));
+    this.renderer.runtime.raptors.clear();
+    this.renderer.runtime.food.clear();
 
-}
+    /*
+     * =========================
+     * RAPTORS
+     * =========================
+     */
 
-loop(time) {
-if (!this.running) return;
+    for (
+      const [
+        locationId,
+        data
+      ] of this.state.raptors
+    ) {
+      this.renderer.setRuntimeRaptor(
+        locationId,
+        data
+      );
+    }
 
-const deltaTime =
-  (time - this.lastTime) / 1000;
+    /*
+     * =========================
+     * FOOD
+     * =========================
+     */
 
-this.lastTime = time;
+    for (
+      const [
+        locationId,
+        data
+      ] of this.state.food
+    ) {
+      this.renderer.setRuntimeFood(
+        locationId,
+        data
+      );
+    }
 
-this.update(deltaTime);
-this.render();
+    this.renderer.render();
+  }
 
-requestAnimationFrame(
-  (nextTime) => this.loop(nextTime)
-);
+  /*
+   * =========================
+   * API TEMPORAL
+   * =========================
+   *
+   * Estas funciones nos permiten
+   * comprobar el sistema antes de
+   * conectar Twitch.
+   *
+   * Después serán reemplazadas/
+   * utilizadas por el sistema de
+   * comandos y WebSocket.
+   */
 
-}
+  setRaptor(
+    locationId,
+    data
+  ) {
+    return this.state.setRaptor(
+      locationId,
+      data
+    );
+  }
 
-update(deltaTime) {
-void deltaTime;
-}
+  removeRaptor(
+    locationId
+  ) {
+    return this.state.removeRaptor(
+      locationId
+    );
+  }
 
-render() {
-this.mapRenderer.render();
-}
+  setFood(
+    locationId,
+    data
+  ) {
+    return this.state.setFood(
+      locationId,
+      data
+    );
+  }
 
-getAsset(id) {
-return assetRegistry.get(id);
-}
+  removeFood(
+    locationId
+  ) {
+    return this.state.removeFood(
+      locationId
+    );
+  }
 
-getRaptorAssignment(locationId) {
-return this.raptorAssignments.get(
-locationId
-);
-}
+  /*
+   * =========================
+   * RESIZE
+   * =========================
+   */
 
-setRaptorAssignment(
-locationId,
-sheetName
-) {
-this.raptorAssignments.set(
-locationId,
-sheetName
-);
-}
+  resize() {
+    this.renderer.resize();
+    this.renderer.render();
+  }
 
-stop() {
-this.running = false;
-}
+  /*
+   * =========================
+   * START
+   * =========================
+   */
+
+  start() {
+    if (this.running) {
+      return;
+    }
+
+    this.running = true;
+
+    this.lastFrameTime =
+      performance.now();
+
+    requestAnimationFrame(
+      (time) =>
+        this.loop(time)
+    );
+  }
+
+  loop(time) {
+    if (!this.running) {
+      return;
+    }
+
+    const deltaTime =
+      time -
+      this.lastFrameTime;
+
+    this.lastFrameTime =
+      time;
+
+    this.update(
+      deltaTime
+    );
+
+    this.renderer.render();
+
+    requestAnimationFrame(
+      (nextTime) =>
+        this.loop(nextTime)
+    );
+  }
+
+  update(deltaTime) {
+    /*
+     * Aquí entrarán posteriormente:
+     *
+     * - movimiento
+     * - animaciones
+     * - interacciones
+     * - cooldowns
+     * - timers
+     * - etc.
+     *
+     * Por ahora el estado es estático.
+     */
+
+    void deltaTime;
+  }
+
+  stop() {
+    this.running = false;
+  }
+
+  destroy() {
+    this.stop();
+
+    if (
+      this.unsubscribe
+    ) {
+      this.unsubscribe();
+      this.unsubscribe =
+        null;
+    }
+  }
 }
