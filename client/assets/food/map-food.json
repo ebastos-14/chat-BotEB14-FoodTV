@@ -1,230 +1,234 @@
 {
-"version": 1,
-"mapId": "restaurant-main",
-"module": "food",
-
-"background": {
-"asset": "/assets/restaurant/map-background.png",
-"width": 1536,
-"height": 1536
-},
-
-"entities": [
-{
-"id": "Menu_1",
-"type": "menu",
-"source": {
-"x": 15,
-"y": 25,
-"width": 276,
-"height": 390
-}
-},
-{
-"id": "Menu_2",
-"type": "menu",
-"source": {
-"x": 316,
-"y": 25,
-"width": 276,
-"height": 390
-}
-},
-{
-"id": "Menu_3",
-"type": "menu",
-"source": {
-"x": 616,
-"y": 25,
-"width": 276,
-"height": 390
-}
-},
-{
-"id": "Menu_4",
-"type": "menu",
-"source": {
-"x": 918,
-"y": 25,
-"width": 276,
-"height": 390
-}
-},
-{
-"id": "Menu_5",
-"type": "menu",
-"source": {
-"x": 15,
-"y": 445,
-"width": 276,
-"height": 390
-}
-},
-{
-"id": "Menu_6",
-"type": "menu",
-"source": {
-"x": 316,
-"y": 445,
-"width": 276,
-"height": 390
-}
-},
-{
-"id": "Menu_7",
-"type": "menu",
-"source": {
-"x": 616,
-"y": 445,
-"width": 276,
-"height": 390
-}
-},
-{
-"id": "Menu_8",
-"type": "menu",
-"source": {
-"x": 918,
-"y": 445,
-"width": 276,
-"height": 390
-}
-},
-
-{
-  "id": "Food_1",
-  "type": "food",
-  "item": "taco",
-  "section": 1,
-  "scale": 0.19,
-  "position": {
-    "x": 141,
-    "y": 126
-  }
-},
-{
-  "id": "Food_2",
-  "type": "food",
-  "item": "taco",
-  "section": 1,
-  "scale": 0.19,
-  "position": {
-    "x": 141,
-    "y": 309
-  }
-},
-{
-  "id": "Food_3",
-  "type": "food",
-  "item": "taco",
-  "section": 1,
-  "scale": 0.19,
-  "position": {
-    "x": 141,
-    "y": 484
-  }
-},
-{
-  "id": "Food_4",
-  "type": "food",
-  "item": "taco",
-  "section": 1,
-  "scale": 0.19,
-  "position": {
-    "x": 141,
-    "y": 659
-  }
-},
-
-{
-  "id": "Drink_1",
-  "type": "drink",
-  "item": "jugo_fresa",
-  "section": 1,
-  "scale": 0.1,
-  "position": {
-    "x": 138,
-    "y": 113
-  }
-},
-{
-  "id": "Drink_2",
-  "type": "drink",
-  "item": "jugo_fresa",
-  "section": 1,
-  "scale": 0.1,
-  "position": {
-    "x": 138,
-    "y": 296
-  }
-},
-{
-  "id": "Drink_3",
-  "type": "drink",
-  "item": "jugo_fresa",
-  "section": 1,
-  "scale": 0.1,
-  "position": {
-    "x": 138,
-    "y": 471
-  }
-},
-{
-  "id": "Drink_4",
-  "type": "drink",
-  "item": "jugo_fresa",
-  "section": 1,
-  "scale": 0.1,
-  "position": {
-    "x": 138,
-    "y": 646
-  }
-},
-
-{
-  "id": "Bag_1",
-  "type": "bag",
-  "item": "burrito",
-  "section": 1,
-  "scale": 0.25,
-  "position": {
-    "x": 794,
-    "y": 838
-  }
-},
-{
-  "id": "Bag_2",
-  "type": "bag",
-  "item": "burrito",
-  "section": 1,
-  "scale": 0.25,
-  "position": {
-    "x": 838,
-    "y": 838
-  }
-},
-{
-  "id": "Bag_3",
-  "type": "bag",
-  "item": "burrito",
-  "section": 1,
-  "scale": 0.25,
-  "position": {
-    "x": 982,
-    "y": 838
-  }
-},
-{
-  "id": "Bag_4",
-  "type": "bag",
-  "item": "burrito",
-  "section": 1,
-  "scale": 0.25,
-  "position": {
-    "x": 1077,
-    "y": 838
-  }
-}
-
-]
+  "version": 2,
+  "mapId": "restaurant-main",
+  "module": "food",
+  "background": {
+    "asset": "/assets/restaurant/map-background.png",
+    "width": 1536,
+    "height": 1536
+  },
+  "entities": [
+    {
+      "id": "Menu_1",
+      "type": "menu",
+      "source": {
+        "x": 15,
+        "y": 25,
+        "width": 276,
+        "height": 390
+      }
+    },
+    {
+      "id": "Menu_2",
+      "type": "menu",
+      "source": {
+        "x": 316,
+        "y": 25,
+        "width": 276,
+        "height": 390
+      }
+    },
+    {
+      "id": "Menu_3",
+      "type": "menu",
+      "source": {
+        "x": 616,
+        "y": 25,
+        "width": 276,
+        "height": 390
+      }
+    },
+    {
+      "id": "Menu_4",
+      "type": "menu",
+      "source": {
+        "x": 918,
+        "y": 25,
+        "width": 276,
+        "height": 390
+      }
+    },
+    {
+      "id": "Menu_5",
+      "type": "menu",
+      "source": {
+        "x": 15,
+        "y": 445,
+        "width": 276,
+        "height": 390
+      }
+    },
+    {
+      "id": "Menu_6",
+      "type": "menu",
+      "source": {
+        "x": 316,
+        "y": 445,
+        "width": 276,
+        "height": 390
+      }
+    },
+    {
+      "id": "Menu_7",
+      "type": "menu",
+      "source": {
+        "x": 616,
+        "y": 445,
+        "width": 276,
+        "height": 390
+      }
+    },
+    {
+      "id": "Menu_8",
+      "type": "menu",
+      "source": {
+        "x": 918,
+        "y": 445,
+        "width": 276,
+        "height": 390
+      }
+    },
+    {
+      "id": "Food_1",
+      "type": "food",
+      "item": "taco",
+      "section": 1,
+      "scale": 0.19,
+      "position": {
+        "x": 178,
+        "y": 164
+      }
+    },
+    {
+      "id": "Food_2",
+      "type": "food",
+      "item": "taco",
+      "section": 1,
+      "scale": 0.19,
+      "position": {
+        "x": 176,
+        "y": 390
+      },
+      "layer": 2
+    },
+    {
+      "id": "Food_3",
+      "type": "food",
+      "item": "taco",
+      "section": 1,
+      "scale": 0.19,
+      "position": {
+        "x": 182,
+        "y": 608
+      },
+      "layer": 2
+    },
+    {
+      "id": "Food_4",
+      "type": "food",
+      "item": "taco",
+      "section": 1,
+      "scale": 0.19,
+      "position": {
+        "x": 182,
+        "y": 818
+      },
+      "layer": 2
+    },
+    {
+      "id": "Drink_1",
+      "type": "drink",
+      "item": "jugo_fresa",
+      "section": 1,
+      "scale": 0.1,
+      "position": {
+        "x": 178,
+        "y": 142
+      },
+      "layer": 1
+    },
+    {
+      "id": "Drink_2",
+      "type": "drink",
+      "item": "jugo_fresa",
+      "section": 1,
+      "scale": 0.1,
+      "position": {
+        "x": 179,
+        "y": 377
+      },
+      "layer": 1
+    },
+    {
+      "id": "Drink_3",
+      "type": "drink",
+      "item": "jugo_fresa",
+      "section": 1,
+      "scale": 0.1,
+      "position": {
+        "x": 173,
+        "y": 587
+      }
+    },
+    {
+      "id": "Drink_4",
+      "type": "drink",
+      "item": "jugo_fresa",
+      "section": 1,
+      "scale": 0.1,
+      "position": {
+        "x": 176,
+        "y": 806
+      },
+      "layer": 1
+    },
+    {
+      "id": "Bag_1",
+      "type": "bag",
+      "item": "burrito",
+      "section": 1,
+      "scale": 0.25,
+      "position": {
+        "x": 980,
+        "y": 1048
+      },
+      "layer": 4
+    },
+    {
+      "id": "Bag_2",
+      "type": "bag",
+      "item": "burrito",
+      "section": 1,
+      "scale": 0.25,
+      "position": {
+        "x": 1094,
+        "y": 1048
+      },
+      "layer": 4
+    },
+    {
+      "id": "Bag_3",
+      "type": "bag",
+      "item": "burrito",
+      "section": 1,
+      "scale": 0.25,
+      "position": {
+        "x": 1212,
+        "y": 1048
+      },
+      "layer": 4
+    },
+    {
+      "id": "Bag_4",
+      "type": "bag",
+      "item": "burrito",
+      "section": 1,
+      "scale": 0.25,
+      "position": {
+        "x": 1325,
+        "y": 1048
+      },
+      "layer": 4
+    }
+  ]
 }
