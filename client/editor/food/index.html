@@ -1,0 +1,389 @@
+<!DOCTYPE html><html lang="es">
+<head>
+  <meta charset="UTF-8"><meta
+name="viewport"
+content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+
+«»
+
+  <title>Editor de Food - chat-BotEB14-FoodTV</title>  <link rel="stylesheet" href="/editor/food/editor.css">
+</head><body>
+  <main class="editor-page"><header class="editor-header">
+  <div>
+    <h1>Editor de Food</h1>
+    <p>
+      Configuración de comidas, bebidas, bolsas y ubicaciones
+    </p>
+  </div>
+
+  <nav class="editor-nav">
+    <a href="/">Juego</a>
+    <a href="/editor/raptor/">Raptors</a>
+    <a href="/editor/food/">Food</a>
+  </nav>
+</header>
+
+<section class="editor-layout">
+
+  <!-- VISTA PRINCIPAL -->
+  <section class="editor-map-panel">
+
+    <div class="panel-title">
+      <h2>Editor</h2>
+      <span id="editor-status">Cargando...</span>
+    </div>
+
+    <div class="canvas-wrapper">
+      <canvas
+        id="editor-canvas"
+        width="1280"
+        height="720"
+        aria-label="Editor de Food"
+      ></canvas>
+    </div>
+
+  </section>
+
+  <!-- CONTROLES -->
+  <aside class="editor-controls">
+
+    <!-- TIPO DE RECURSO -->
+    <section class="editor-panel">
+
+      <h2>Tipo</h2>
+
+      <label for="food-type">
+        Categoría
+      </label>
+
+      <select id="food-type">
+        <option value="food">Comida</option>
+        <option value="drink">Bebida</option>
+        <option value="bag">Bolsa</option>
+      </select>
+
+    </section>
+
+
+    <!-- SPRITESHEET -->
+    <section class="editor-panel">
+
+      <h2>Spritesheet</h2>
+
+      <label for="sheet-select">
+        Recurso
+      </label>
+
+      <select id="sheet-select">
+
+        <optgroup label="Comidas">
+
+          <option value="Menu_Hamburguesa.png">
+            Hamburguesa
+          </option>
+
+          <option value="Menu_Taco.png">
+            Taco
+          </option>
+
+          <option value="Menu_Burrito.png">
+            Burrito
+          </option>
+
+          <option value="Menu_Hotdog.png">
+            Hotdog
+          </option>
+
+          <option value="Menu_Sushi.png">
+            Sushi
+          </option>
+
+          <option value="Menu_Pizza.png">
+            Pizza
+          </option>
+
+          <option value="Menu_Sandwich.png">
+            Sandwich
+          </option>
+
+        </optgroup>
+
+        <optgroup label="Bebida">
+
+          <option value="Menu_Bebida.png">
+            Bebida
+          </option>
+
+        </optgroup>
+
+        <optgroup label="Bolsa">
+
+          <option value="Menu_Bolsa.png">
+            Bolsa
+          </option>
+
+        </optgroup>
+
+      </select>
+
+    </section>
+
+
+    <!-- SECCIONES DEL SPRITESHEET -->
+    <section class="editor-panel">
+
+      <h2>Secciones</h2>
+
+      <p>
+        Cada spritesheet utiliza 8 secciones.
+        La sección 1 corresponde al estado vacío.
+      </p>
+
+      <label for="section-select">
+        Sección
+      </label>
+
+      <select id="section-select">
+
+        <option value="1">1 — Vacío</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+
+      </select>
+
+    </section>
+
+
+    <!-- MAPEO DE IMAGEN -->
+    <section class="editor-panel">
+
+      <h2>Mapeo de imagen</h2>
+
+      <div class="field-grid">
+
+        <div class="field">
+          <label for="source-x">X</label>
+          <input
+            id="source-x"
+            type="number"
+            step="1"
+            inputmode="numeric"
+          >
+        </div>
+
+        <div class="field">
+          <label for="source-y">Y</label>
+          <input
+            id="source-y"
+            type="number"
+            step="1"
+            inputmode="numeric"
+          >
+        </div>
+
+        <div class="field">
+          <label for="source-width">Ancho</label>
+          <input
+            id="source-width"
+            type="number"
+            step="1"
+            min="1"
+            inputmode="numeric"
+          >
+        </div>
+
+        <div class="field">
+          <label for="source-height">Alto</label>
+          <input
+            id="source-height"
+            type="number"
+            step="1"
+            min="1"
+            inputmode="numeric"
+          >
+        </div>
+
+      </div>
+
+      <div class="button-row">
+
+        <button
+          id="apply-section"
+          type="button"
+        >
+          Aplicar sección
+        </button>
+
+        <button
+          id="generate-sections"
+          type="button"
+        >
+          Generar 8 secciones
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- UBICACIÓN EN RESTAURANTE -->
+    <section class="editor-panel">
+
+      <h2>Ubicación en restaurante</h2>
+
+      <label for="entity-select">
+        Ubicación
+      </label>
+
+      <select id="entity-select">
+        <option value="">
+          Seleccione una ubicación
+        </option>
+      </select>
+
+      <div class="field-grid">
+
+        <div class="field">
+          <label for="entity-x">X</label>
+          <input
+            id="entity-x"
+            type="number"
+            step="1"
+            inputmode="numeric"
+          >
+        </div>
+
+        <div class="field">
+          <label for="entity-y">Y</label>
+          <input
+            id="entity-y"
+            type="number"
+            step="1"
+            inputmode="numeric"
+          >
+        </div>
+
+        <div class="field">
+          <label for="entity-scale">Escala</label>
+          <input
+            id="entity-scale"
+            type="number"
+            step="0.001"
+            min="0.01"
+            inputmode="decimal"
+          >
+        </div>
+
+        <div class="field">
+          <label for="entity-layer">Layer</label>
+          <input
+            id="entity-layer"
+            type="number"
+            step="1"
+            inputmode="numeric"
+          >
+        </div>
+
+      </div>
+
+      <div class="button-row">
+
+        <button
+          id="apply-entity"
+          type="button"
+        >
+          Aplicar ubicación
+        </button>
+
+        <button
+          id="reset-entity"
+          type="button"
+        >
+          Restablecer
+        </button>
+
+        <button
+          id="delete-entity"
+          type="button"
+          class="danger"
+        >
+          Eliminar
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- AGREGAR UBICACIÓN -->
+    <section class="editor-panel">
+
+      <h2>Ubicaciones</h2>
+
+      <button
+        id="add-entity"
+        type="button"
+      >
+        + Agregar ubicación
+      </button>
+
+    </section>
+
+
+    <!-- JSON -->
+    <section class="editor-panel">
+
+      <h2>JSON</h2>
+
+      <div class="button-row">
+
+        <button
+          id="export-json"
+          type="button"
+        >
+          Exportar
+        </button>
+
+        <button
+          id="copy-json"
+          type="button"
+        >
+          Copiar
+        </button>
+
+      </div>
+
+      <textarea
+        id="json-data"
+        rows="16"
+        spellcheck="false"
+        placeholder="Aquí aparecerá el JSON del módulo Food..."
+      ></textarea>
+
+      <div class="button-row">
+
+        <button
+          id="import-json"
+          type="button"
+        >
+          Importar JSON
+        </button>
+
+      </div>
+
+    </section>
+
+  </aside>
+
+</section>
+
+  </main>  <script
+    type="module"
+    src="/editor/food/food_editor.js"
+  ></script></body>
+</html>
