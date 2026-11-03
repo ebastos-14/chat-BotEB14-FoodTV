@@ -8,23 +8,10 @@ const renderer = new MapRenderer(canvas);
 const RAPTOR_PATH = "/assets/raptors/";
 const FOOD_PATH = "/assets/food/";
 
-const RAPTOR_TEST_ASSIGNMENTS = {
-  Lateral_L_1: "Raptor_Mod.png",
-  Lateral_L_2: "Raptor_Ebastos14.png",
-  Lateral_L_3: "Raptor_Jaciitv_1.png",
-  Lateral_L_4: "Raptor_Jaciitv_2.png",
-
-  Lateral_R_1: "Raptor_Mod.png",
-  Lateral_R_2: "Raptor_Ebastos14.png",
-  Lateral_R_3: "Raptor_Jaciitv_1.png",
-  Lateral_R_4: "Raptor_Jaciitv_2.png",
-
-  Front: "Raptor_Mod.png",
-
-  Back_1: "Raptor_Base.png",
-  Back_2: "Raptor_Vip.png",
-  Back_3: "Raptor_Sub.png",
-  Back_4: "Raptor_Mod.png"
+const RAPTOR_SPRITES = {
+  lateral: "Raptor_Mod.png",
+  front: "Raptor_Mod.png",
+  back: "Raptor_Base.png"
 };
 
 const RAPTOR_SOURCE = {
@@ -69,34 +56,9 @@ function setStatus(message, isError = false) {
   }
 
   status.textContent = message;
-  status.dataset.error = isError ? "true" : "false";
-}
-
-function getRaptorSource(entity) {
-  return (
-    RAPTOR_SOURCE[entity.profile] ??
-    RAPTOR_SOURCE.lateral
-  );
-}
-
-function loadImageForTest(source) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-
-    image.onload = () => {
-      resolve(image);
-    };
-
-    image.onerror = () => {
-      reject(
-        new Error(
-          `No se pudo cargar: ${source}`
-        )
-      );
-    };
-
-    image.src = source;
-  });
+  status.dataset.error = isError
+    ? "true"
+    : "false";
 }
 
 async function loadJson(url) {
@@ -113,97 +75,140 @@ async function loadJson(url) {
   return response.json();
 }
 
+function loadImageForTest(source) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+
+    image.onload = () => {
+      resolve(image);
+    };
+
+    image.onerror = () => {
+      reject(
+        new Error(
+          `No se pudo cargar sprite: ${source}`
+        )
+      );
+    };
+
+    image.src = source;
+  });
+}
+
+function getRaptorProfile(entity) {
+  if (
+    entity.profile === "lateral" ||
+    entity.profile === "front" ||
+    entity.profile === "back"
+  ) {
+    return entity.profile;
+  }
+
+  console.warn(
+    "Profile Raptor desconocido:",
+    entity.profile,
+    entity
+  );
+
+  return "lateral";
+}
+
 async function startTest() {
   try {
-    setStatus("Cargando mapas de prueba...");
+    setStatus(
+      "Cargando mapas de prueba..."
+    );
 
     await renderer.load();
 
-    const raptorMap = await loadJson(
-      "/assets/raptors/map-raptors.json"
-    );
+    const raptorMap =
+      await loadJson(
+        "/assets/raptors/map-raptors.json"
+      );
 
-    const foodMap = await loadJson(
-      "/assets/food/map-food.json"
-    );
+    const foodMap =
+      await loadJson(
+        "/assets/food/map-food.json"
+      );
 
     /*
      * =====================================================
-     * 1. COMPROBAR ARCHIVOS DE RAPTOR
+     * RAPTORS
      * =====================================================
      */
 
-    setStatus("Comprobando sprites de Raptors...");
+    const raptorEntities =
+      (raptorMap.entities ?? [])
+        .filter(
+          (entity) =>
+            entity.type === "raptor"
+        );
 
-    const raptorFiles = [
+    console.log(
+      "Ubicaciones Raptor encontradas:",
+      raptorEntities
+    );
+
+    setStatus(
+      `Encontradas ${raptorEntities.length} ubicaciones Raptor...`
+    );
+
+    /*
+     * Cargar únicamente los tres sprites
+     * necesarios para esta prueba.
+     */
+
+    const raptorSpriteFiles = [
       ...new Set(
-        Object.values(
-          RAPTOR_TEST_ASSIGNMENTS
+        raptorEntities.map(
+          (entity) => {
+            const profile =
+              getRaptorProfile(entity);
+
+            return RAPTOR_SPRITES[
+              profile
+            ];
+          }
         )
       )
     ];
 
-    for (const file of raptorFiles) {
-      const path = `${RAPTOR_PATH}${file}`;
+    for (
+      const file of
+      raptorSpriteFiles
+    ) {
+      const path =
+        `${RAPTOR_PATH}${file}`;
 
       const image =
         await loadImageForTest(path);
 
       console.log(
-        `Raptor OK: ${file}`,
+        "Raptor sprite OK:",
+        file,
         `${image.naturalWidth}x${image.naturalHeight}`
       );
     }
 
     /*
-     * =====================================================
-     * 2. COMPROBAR ARCHIVOS FOOD
-     * =====================================================
-     */
-
-    const foodFiles = [
-      ...new Set(
-        Object.values(
-          FOOD_TEST_SPRITES
-        )
-      )
-    ];
-
-    for (const path of foodFiles) {
-      const image =
-        await loadImageForTest(path);
-
-      console.log(
-        `Food OK: ${path}`,
-        `${image.naturalWidth}x${image.naturalHeight}`
-      );
-    }
-
-    /*
-     * =====================================================
-     * 3. COLOCAR RAPTORS
-     * =====================================================
+     * Colocar automáticamente un Raptor
+     * en CADA ubicación del mapa.
      */
 
     let raptorCount = 0;
 
-    for (const entity of raptorMap.entities ?? []) {
-      if (entity.type !== "raptor") {
-        continue;
-      }
+    for (
+      const entity of
+      raptorEntities
+    ) {
+      const profile =
+        getRaptorProfile(entity);
 
       const spriteName =
-        RAPTOR_TEST_ASSIGNMENTS[
-          entity.id
-        ];
+        RAPTOR_SPRITES[profile];
 
-      if (!spriteName) {
-        console.warn(
-          `Sin sprite de prueba para ${entity.id}`
-        );
-
-        continue;
-      }
+      const source =
+        RAPTOR_SOURCE[profile];
 
       renderer.setRuntimeRaptor(
         entity.id,
@@ -211,8 +216,7 @@ async function startTest() {
           sprite:
             `${RAPTOR_PATH}${spriteName}`,
 
-          source:
-            getRaptorSource(entity),
+          source,
 
           mirror:
             Boolean(entity.mirror)
@@ -223,30 +227,39 @@ async function startTest() {
 
       console.log(
         "Raptor colocado:",
-        entity.id,
-        spriteName,
-        entity.profile,
-        entity.position
+        {
+          id: entity.id,
+          profile,
+          sprite: spriteName,
+          position: entity.position,
+          scale: entity.scale,
+          mirror: entity.mirror,
+          layer: entity.layer
+        }
       );
     }
 
     /*
      * =====================================================
-     * 4. COLOCAR FOOD
+     * FOOD
      * =====================================================
      */
 
+    const foodEntities =
+      (foodMap.entities ?? [])
+        .filter(
+          (entity) =>
+            entity.type === "food" ||
+            entity.type === "drink" ||
+            entity.type === "bag"
+        );
+
     let foodCount = 0;
 
-    for (const entity of foodMap.entities ?? []) {
-      if (
-        entity.type !== "food" &&
-        entity.type !== "drink" &&
-        entity.type !== "bag"
-      ) {
-        continue;
-      }
-
+    for (
+      const entity of
+      foodEntities
+    ) {
       const sprite =
         FOOD_TEST_SPRITES[
           entity.type
@@ -260,7 +273,8 @@ async function startTest() {
         entity.id,
         {
           sprite,
-          source: FOOD_SOURCE
+          source:
+            FOOD_SOURCE
         }
       );
 
@@ -269,7 +283,7 @@ async function startTest() {
 
     /*
      * =====================================================
-     * 5. RENDER FINAL
+     * RENDER FINAL
      * =====================================================
      */
 
@@ -280,7 +294,7 @@ async function startTest() {
     );
 
     console.log(
-      "======================================"
+      "========================================"
     );
 
     console.log(
@@ -288,16 +302,21 @@ async function startTest() {
     );
 
     console.log(
-      "======================================"
+      "========================================"
     );
 
     console.log(
-      "Raptors renderizados:",
+      "Ubicaciones Raptor:",
+      raptorEntities.length
+    );
+
+    console.log(
+      "Raptors colocados:",
       raptorCount
     );
 
     console.log(
-      "Objetos renderizados:",
+      "Objetos Food:",
       foodCount
     );
 
