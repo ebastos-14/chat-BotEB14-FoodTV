@@ -50,35 +50,24 @@ const RAPTOR_SOURCE = {
   }
 };
 
+const FOOD_SOURCE = {
+  x: 15,
+  y: 25,
+  width: 276,
+  height: 390
+};
+
 const FOOD_TEST_SPRITES = {
   food: {
-    sprite: `${FOOD_PATH}Menu_Taco.png`,
-    source: {
-      x: 15,
-      y: 25,
-      width: 276,
-      height: 390
-    }
+    sprite: `${FOOD_PATH}Menu_Taco.png`
   },
 
   drink: {
-    sprite: `${FOOD_PATH}Menu_Bebida.png`,
-    source: {
-      x: 15,
-      y: 25,
-      width: 276,
-      height: 390
-    }
+    sprite: `${FOOD_PATH}Menu_Bebida.png`
   },
 
   bag: {
-    sprite: `${FOOD_PATH}Menu_Bolsa.png`,
-    source: {
-      x: 15,
-      y: 25,
-      width: 276,
-      height: 390
-    }
+    sprite: `${FOOD_PATH}Menu_Bolsa.png`
   }
 };
 
@@ -91,159 +80,123 @@ function setStatus(message, isError = false) {
   status.dataset.error = isError ? "true" : "false";
 }
 
-function getRaptorProfile(entity) {
-  if (entity.profile === "lateral") {
-    return "lateral";
-  }
-
-  if (entity.profile === "front") {
-    return "front";
-  }
-
-  if (entity.profile === "back") {
-    return "back";
-  }
-
-  return "lateral";
-}
-
 function getRaptorSource(entity) {
-  return RAPTOR_SOURCE[getRaptorProfile(entity)];
+  return (
+    RAPTOR_SOURCE[entity.profile] ??
+    RAPTOR_SOURCE.lateral
+  );
 }
 
-function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-
-    image.onload = () => resolve(image);
-
-    image.onerror = () => {
-      reject(new Error(`No se pudo cargar el sprite: ${src}`));
-    };
-
-    image.src = src;
+async function loadJson(url) {
+  const response = await fetch(url, {
+    cache: "no-store"
   });
-}
 
-async function createTestState() {
-  const raptorMapResponse = await fetch(
-    "/assets/raptors/map-raptors.json",
-    { cache: "no-store" }
-  );
-
-  if (!raptorMapResponse.ok) {
-    throw new Error("No se pudo cargar map-raptors.json.");
+  if (!response.ok) {
+    throw new Error(`No se pudo cargar ${url}`);
   }
 
-  const raptorMap = await raptorMapResponse.json();
-
-  const foodMapResponse = await fetch(
-    "/assets/food/map-food.json",
-    { cache: "no-store" }
-  );
-
-  if (!foodMapResponse.ok) {
-    throw new Error("No se pudo cargar map-food.json.");
-  }
-
-  const foodMap = await foodMapResponse.json();
-
-  const raptors = new Map();
-
-  for (const entity of raptorMap.entities ?? []) {
-    if (entity.type !== "raptor") {
-      continue;
-    }
-
-    const spriteName = RAPTOR_TEST_ASSIGNMENTS[entity.id];
-
-    if (!spriteName) {
-      continue;
-    }
-
-    raptors.set(entity.id, {
-      sprite: `${RAPTOR_PATH}${spriteName}`,
-      source: getRaptorSource(entity),
-      mirror: Boolean(entity.mirror)
-    });
-  }
-
-  const food = new Map();
-
-  for (const entity of foodMap.entities ?? []) {
-    if (!["food", "drink", "bag"].includes(entity.type)) {
-      continue;
-    }
-
-    const spriteConfig = FOOD_TEST_SPRITES[entity.type];
-
-    if (!spriteConfig) {
-      continue;
-    }
-
-    food.set(entity.id, {
-      sprite: spriteConfig.sprite,
-      source: spriteConfig.source
-    });
-  }
-
-  return {
-    raptors,
-    food
-  };
-}
-
-async function preloadImages(state) {
-  const sources = new Set();
-
-  for (const item of state.raptors.values()) {
-    sources.add(item.sprite);
-  }
-
-  for (const item of state.food.values()) {
-    sources.add(item.sprite);
-  }
-
-  await Promise.all(
-    [...sources].map((src) => loadImage(src))
-  );
+  return response.json();
 }
 
 async function startTest() {
   try {
-    setStatus("Cargando mapa de prueba...");
+    setStatus("Cargando mapas de prueba...");
 
-    await renderer.initialize();
+    /*
+     * El MapRenderer actual ya carga los mapas mediante load().
+     * No usamos initialize(), porque esa función no existe
+     * en la versión actual.
+     */
+    await renderer.load();
 
-    const state = await createTestState();
+    const raptorMap = await loadJson(
+      "/assets/raptors/map-raptors.json"
+    );
 
-    setStatus("Cargando sprites de prueba...");
+    const foodMap = await loadJson(
+      "/assets/food/map-food.json"
+    );
 
-    await preloadImages(state);
+    setStatus("Colocando sprites de prueba...");
 
-    renderer.clearRuntime();
+    /*
+     * Raptors
+     */
+    for (const entity of raptorMap.entities ?? []) {
+      if (entity.type !== "raptor") {
+        continue;
+      }
 
-    for (const [id, raptor] of state.raptors) {
-      renderer.setRuntimeRaptor(id, raptor);
+      const spriteName =
+        RAPTOR_TEST_ASSIGNMENTS[entity.id];
+
+      if (!spriteName) {
+        continue;
+      }
+
+      renderer.setRuntimeRaptor(entity.id, {
+        sprite: `${RAPTOR_PATH}${spriteName}`,
+        source: getRaptorSource(entity),
+        mirror: Boolean(entity.mirror)
+      });
     }
 
-    for (const [id, item] of state.food) {
-      renderer.setRuntimeFood(id, item);
+    /*
+     * Food / drinks / bags
+     */
+    for (const entity of foodMap.entities ?? []) {
+      if (
+        entity.type !== "food" &&
+        entity.type !== "drink" &&
+        entity.type !== "bag"
+      ) {
+        continue;
+      }
+
+      const config =
+        FOOD_TEST_SPRITES[entity.type];
+
+      if (!config) {
+        continue;
+      }
+
+      renderer.setRuntimeFood(entity.id, {
+        sprite: config.sprite,
+        source: FOOD_SOURCE
+      });
     }
 
     renderer.render();
 
+    const raptorCount =
+      raptorMap.entities?.filter(
+        (entity) => entity.type === "raptor"
+      ).length ?? 0;
+
+    const foodCount =
+      foodMap.entities?.filter(
+        (entity) =>
+          entity.type === "food" ||
+          entity.type === "drink" ||
+          entity.type === "bag"
+      ).length ?? 0;
+
     setStatus(
-      `MODO TEST — ${state.raptors.size} Raptors + ${state.food.size} objetos`
+      `MODO TEST — ${raptorCount} Raptors + ${foodCount} objetos`
     );
 
-    console.log("=== chat-BotEB14-FoodTV — SPRITE TEST ===");
-    console.log("Raptors:", state.raptors);
-    console.log("Food:", state.food);
-    console.log("Mapa de Raptors:", renderer.layout.raptors);
-    console.log("Mapa de Food:", renderer.layout.food);
+    console.log(
+      "=== chat-BotEB14-FoodTV — SPRITE TEST ==="
+    );
+
+    console.log("Raptors:", raptorMap);
+    console.log("Food:", foodMap);
   } catch (error) {
-    console.error("Error en el test de sprites:", error);
+    console.error(
+      "Error en el test de sprites:",
+      error
+    );
 
     setStatus(
       `ERROR EN TEST: ${error.message}`,
@@ -260,6 +213,9 @@ function resizeCanvas() {
   renderer.render();
 }
 
-window.addEventListener("resize", resizeCanvas);
+window.addEventListener(
+  "resize",
+  resizeCanvas
+);
 
 startTest();
