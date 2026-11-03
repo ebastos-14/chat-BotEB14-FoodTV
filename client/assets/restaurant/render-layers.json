@@ -10,13 +10,15 @@
       "id": "restaurant-background",
       "type": "image",
       "asset": "/assets/restaurant/map-background.png",
-      "layer": 0
+      "layer": 0,
+      "priority": 0
     },
     {
       "id": "mostrador",
       "type": "image",
       "asset": "/assets/restaurant/Mostrador.png",
-      "layer": 3
+      "layer": 3,
+      "priority": 50
     }
   ]
 }
