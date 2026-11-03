@@ -12,13 +12,6 @@ const WORKER_HOME_POSITIONS = {
   mod_4: "Left_4"
 };
 
-const DEFAULT_SPRITE = "Raptor_Mod.png";
-
-const SPECIAL_SPRITES = {
-  ebastos14: "Raptor_EBastos14.png",
-  jaciitv: "Raptor_JaciiTV_1.png"
-};
-
 const WORKER_STATES = {
   AVAILABLE: "available",
   WAITING_STATION: "waiting_station",
@@ -36,87 +29,39 @@ export class WorkerManager {
       );
     }
 
-    this.positions = positionRegistry;
+    this.positionRegistry =
+      positionRegistry;
 
     this.workers = new Map();
 
-    this.initializeWorkers();
-  }
-
-  /*
-   * =========================
-   * INICIALIZACIÓN
-   * =========================
-   */
-
-  initializeWorkers() {
     for (const workerId of WORKER_IDS) {
-      const homePosition =
-        WORKER_HOME_POSITIONS[workerId];
-
-      if (!this.positions.has(homePosition)) {
-        throw new Error(
-          `WorkerManager: posición inexistente: ${homePosition}`
-        );
-      }
-
       this.workers.set(
         workerId,
-        {
-          id: workerId,
-
-          /*
-           * El slot es permanente.
-           */
-          homePositionId: homePosition,
-
-          /*
-           * Posición lógica actual.
-           *
-           * Al comenzar, todos están
-           * en su posición Left correspondiente.
-           */
-          positionId: homePosition,
-
-          /*
-           * Usuario de Twitch que ocupa
-           * actualmente el trabajador.
-           */
-          username: null,
-
-          /*
-           * Sprite actual.
-           */
-          sprite: DEFAULT_SPRITE,
-
-          /*
-           * Estado lógico.
-           */
-          state: WORKER_STATES.AVAILABLE,
-
-          /*
-           * Pedido asociado.
-           */
-          currentOrderId: null,
-
-          /*
-           * Acción actual.
-           */
-          currentAction: null,
-
-          /*
-           * Estación actual.
-           */
-          currentStationId: null,
-
-          /*
-           * Indica si está esperando
-           * una estación.
-           */
-          waitingForStation: false
-        }
+        this.createEmptyWorker(workerId)
       );
     }
+  }
+
+  createEmptyWorker(workerId) {
+    return {
+      id: workerId,
+      username: null,
+      role: null,
+
+      positionId:
+        WORKER_HOME_POSITIONS[
+          workerId
+        ],
+
+      sprite: null,
+
+      state:
+        WORKER_STATES.AVAILABLE,
+
+      currentOrderId: null,
+      currentAction: null,
+      currentStation: null
+    };
   }
 
   /*
@@ -125,167 +70,86 @@ export class WorkerManager {
    * =========================
    */
 
-  getWorker(workerId) {
-    return this.workers.get(workerId) ?? null;
-  }
-
   getAll() {
     return Array.from(
       this.workers.values()
     );
   }
 
-  getAvailableWorker() {
-    for (const worker of this.workers.values()) {
-      if (this.isAvailable(worker.id)) {
-        return worker;
-      }
-    }
-
-    return null;
-  }
-
-  isAvailable(workerId) {
-    const worker =
-      this.getWorker(workerId);
-
-    if (!worker) {
-      return false;
-    }
-
+  get(workerId) {
     return (
-      worker.state === WORKER_STATES.AVAILABLE &&
-      worker.username === null &&
-      worker.currentOrderId === null
+      this.workers.get(workerId) ??
+      null
     );
   }
 
-  getWorkerByUser(username) {
+  getByUsername(username) {
     if (!username) {
       return null;
     }
 
-    const normalized =
-      String(username).toLowerCase();
-
-    for (const worker of this.workers.values()) {
-      if (
-        worker.username &&
-        worker.username.toLowerCase() === normalized
-      ) {
-        return worker;
-      }
-    }
-
-    return null;
+    return (
+      this.getAll().find(
+        (worker) =>
+          worker.username === username
+      ) ?? null
+    );
   }
 
-  getWorkerAtPosition(positionId) {
-    if (!positionId) {
-      return null;
-    }
-
-    for (const worker of this.workers.values()) {
-      if (
-        worker.positionId === positionId
-      ) {
-        return worker;
-      }
-    }
-
-    return null;
+  getAvailableWorker() {
+    return (
+      this.getAll().find(
+        (worker) =>
+          worker.username &&
+          worker.state ===
+            WORKER_STATES.AVAILABLE &&
+          !worker.currentOrderId &&
+          !worker.currentAction
+      ) ?? null
+    );
   }
 
-  getWorkerForHomePosition(positionId) {
-    if (!positionId) {
-      return null;
-    }
-
-    for (const worker of this.workers.values()) {
-      if (
-        worker.homePositionId === positionId
-      ) {
-        return worker;
-      }
-    }
-
-    return null;
+  getFreeSlot() {
+    return (
+      this.getAll().find(
+        (worker) =>
+          worker.username === null
+      ) ?? null
+    );
   }
 
   /*
    * =========================
-   * !WORK
+   * ESTADO DEL SLOT
    * =========================
    */
 
-  canUseWorkCommand({
-    role,
-    username
-  }) {
-    if (!username) {
+  isSlotFree(workerId) {
+    const worker =
+      this.get(workerId);
+
+    if (!worker) {
       return false;
     }
 
-    const normalizedRole =
-      String(role ?? "").toLowerCase();
-
-    return (
-      normalizedRole === "mod" ||
-      normalizedRole === "streamer"
-    );
+    return worker.username === null;
   }
 
-  assignWorker({
-    username,
-    role
-  }) {
-    if (
-      !this.canUseWorkCommand({
-        username,
-        role
-      })
-    ) {
-      return null;
-    }
-
-    /*
-     * Un usuario no puede ocupar
-     * dos trabajadores.
-     */
-    if (
-      this.getWorkerByUser(username)
-    ) {
-      return null;
-    }
-
-    /*
-     * !work siempre utiliza el
-     * primer slot libre.
-     */
+  isAvailable(workerId) {
     const worker =
-      this.getAvailableWorker();
+      this.get(workerId);
 
     if (!worker) {
-      return null;
+      return false;
     }
 
-    worker.username = username;
-
-    worker.sprite =
-      this.resolveSprite(username);
-
-    worker.state =
-      WORKER_STATES.AVAILABLE;
-
-    worker.positionId =
-      worker.homePositionId;
-
-    worker.currentOrderId = null;
-    worker.currentAction = null;
-    worker.currentStationId = null;
-    worker.waitingForStation = false;
-
-    return worker;
+    return (
+      worker.username !== null &&
+      worker.state ===
+        WORKER_STATES.AVAILABLE &&
+      !worker.currentOrderId &&
+      !worker.currentAction
+    );
   }
 
   /*
@@ -301,18 +165,102 @@ export class WorkerManager {
         .toLowerCase();
 
     if (
-      normalized === "ebastos14"
+      normalized ===
+      "ebastos14"
     ) {
-      return SPECIAL_SPRITES.ebastos14;
+      return "Raptor_EBastos14.png";
     }
 
     if (
-      normalized === "jaciitv"
+      normalized ===
+      "jaciitv"
     ) {
-      return SPECIAL_SPRITES.jaciitv;
+      return "Raptor_JaciiTV_1.png";
     }
 
-    return DEFAULT_SPRITE;
+    return "Raptor_Mod.png";
+  }
+
+  /*
+   * =========================
+   * ASIGNACIÓN
+   * =========================
+   */
+
+  assignWorker({
+    username,
+    role
+  }) {
+    if (!username) {
+      return null;
+    }
+
+    const existing =
+      this.getByUsername(
+        username
+      );
+
+    if (existing) {
+      return existing;
+    }
+
+    const worker =
+      this.getFreeSlot();
+
+    if (!worker) {
+      return null;
+    }
+
+    worker.username =
+      username;
+
+    worker.role =
+      role ?? "mod";
+
+    worker.sprite =
+      this.resolveSprite(
+        username
+      );
+
+    worker.positionId =
+      WORKER_HOME_POSITIONS[
+        worker.id
+      ];
+
+    worker.state =
+      WORKER_STATES.AVAILABLE;
+
+    worker.currentOrderId =
+      null;
+
+    worker.currentAction =
+      null;
+
+    worker.currentStation =
+      null;
+
+    return worker;
+  }
+
+  releaseWorker(workerId) {
+    const worker =
+      this.get(workerId);
+
+    if (!worker) {
+      return false;
+    }
+
+    const empty =
+      this.createEmptyWorker(
+        workerId
+      );
+
+    this.workers.set(
+      workerId,
+      empty
+    );
+
+    return true;
   }
 
   /*
@@ -326,14 +274,16 @@ export class WorkerManager {
     positionId
   ) {
     const worker =
-      this.getWorker(workerId);
+      this.get(workerId);
 
     if (!worker) {
       return false;
     }
 
     if (
-      !this.positions.has(positionId)
+      !this.positionRegistry.has(
+        positionId
+      )
     ) {
       return false;
     }
@@ -342,6 +292,15 @@ export class WorkerManager {
       positionId;
 
     return true;
+  }
+
+  returnHome(workerId) {
+    return this.setPosition(
+      workerId,
+      WORKER_HOME_POSITIONS[
+        workerId
+      ]
+    );
   }
 
   /*
@@ -355,7 +314,7 @@ export class WorkerManager {
     state
   ) {
     const worker =
-      this.getWorker(workerId);
+      this.get(workerId);
 
     if (!worker) {
       return false;
@@ -385,7 +344,7 @@ export class WorkerManager {
     orderId
   ) {
     const worker =
-      this.getWorker(workerId);
+      this.get(workerId);
 
     if (!worker) {
       return false;
@@ -395,6 +354,13 @@ export class WorkerManager {
       orderId ?? null;
 
     return true;
+  }
+
+  clearOrder(workerId) {
+    return this.setOrder(
+      workerId,
+      null
+    );
   }
 
   /*
@@ -408,7 +374,7 @@ export class WorkerManager {
     action
   ) {
     const worker =
-      this.getWorker(workerId);
+      this.get(workerId);
 
     if (!worker) {
       return false;
@@ -420,90 +386,41 @@ export class WorkerManager {
     return true;
   }
 
+  clearAction(workerId) {
+    return this.setAction(
+      workerId,
+      null
+    );
+  }
+
   /*
    * =========================
    * ESTACIÓN
    * =========================
    */
 
-  setWaiting(
-    workerId,
-    stationId
-  ) {
-    const worker =
-      this.getWorker(workerId);
-
-    if (!worker) {
-      return false;
-    }
-
-    worker.state =
-      WORKER_STATES.WAITING_STATION;
-
-    worker.currentStationId =
-      stationId ?? null;
-
-    worker.waitingForStation =
-      true;
-
-    /*
-     * El trabajador permanece
-     * en su posición de origen.
-     */
-    worker.positionId =
-      worker.homePositionId;
-
-    return true;
-  }
-
   setStation(
     workerId,
     stationId
   ) {
     const worker =
-      this.getWorker(workerId);
+      this.get(workerId);
 
     if (!worker) {
       return false;
     }
 
-    worker.currentStationId =
+    worker.currentStation =
       stationId ?? null;
 
     return true;
   }
 
-  /*
-   * =========================
-   * LIBERAR TRABAJADOR
-   * =========================
-   */
-
-  releaseWorker(workerId) {
-    const worker =
-      this.getWorker(workerId);
-
-    if (!worker) {
-      return false;
-    }
-
-    worker.username = null;
-
-    worker.sprite =
-      DEFAULT_SPRITE;
-
-    worker.positionId =
-      worker.homePositionId;
-
-    worker.state =
-      WORKER_STATES.AVAILABLE;
-
-    worker.currentOrderId = null;
-    worker.currentAction = null;
-    worker.currentStationId = null;
-    worker.waitingForStation = false;
-
-    return true;
+  clearStation(workerId) {
+    return this.setStation(
+      workerId,
+      null
+    );
   }
 
   /*
@@ -513,89 +430,55 @@ export class WorkerManager {
    */
 
   snapshot() {
-    return {
-      version: 1,
-      workers: this.getAll().map(
-        (worker) => ({
-          id: worker.id,
-          homePositionId:
-            worker.homePositionId,
-          positionId:
-            worker.positionId,
-          username:
-            worker.username,
-          sprite:
-            worker.sprite,
-          state:
-            worker.state,
-          currentOrderId:
-            worker.currentOrderId,
-          currentAction:
-            worker.currentAction,
-          currentStationId:
-            worker.currentStationId,
-          waitingForStation:
-            worker.waitingForStation
-        })
-      )
-    };
+    return this.getAll().map(
+      (worker) => ({
+        ...worker
+      })
+    );
   }
-
-  /*
-   * =========================
-   * LOAD SNAPSHOT
-   * =========================
-   */
 
   loadSnapshot(snapshot) {
     if (
-      !snapshot ||
-      typeof snapshot !== "object"
+      !Array.isArray(snapshot)
     ) {
       throw new Error(
-        "WorkerManager.loadSnapshot: snapshot inválido."
+        "Snapshot de trabajadores inválido."
       );
     }
 
-    if (snapshot.version !== 1) {
-      throw new Error(
-        `WorkerManager.loadSnapshot: versión no soportada: ${snapshot.version}`
-      );
-    }
-
-    if (!Array.isArray(snapshot.workers)) {
-      throw new Error(
-        "WorkerManager.loadSnapshot: workers debe ser un array."
-      );
-    }
-
-    for (const savedWorker of snapshot.workers) {
+    for (
+      const savedWorker of snapshot
+    ) {
       if (
         !savedWorker ||
-        !this.workers.has(savedWorker.id)
+        !WORKER_IDS.includes(
+          savedWorker.id
+        )
       ) {
         continue;
       }
 
       const worker =
-        this.workers.get(
+        this.get(
           savedWorker.id
         );
 
-      /*
-       * homePositionId es permanente
-       * y no se acepta desde el snapshot.
-       */
-      worker.positionId =
-        savedWorker.positionId ??
-        worker.homePositionId;
-
       worker.username =
-        savedWorker.username ?? null;
+        savedWorker.username ??
+        null;
+
+      worker.role =
+        savedWorker.role ??
+        null;
+
+      worker.positionId =
+        WORKER_HOME_POSITIONS[
+          savedWorker.id
+        ];
 
       worker.sprite =
         savedWorker.sprite ??
-        DEFAULT_SPRITE;
+        null;
 
       worker.state =
         savedWorker.state ??
@@ -609,14 +492,9 @@ export class WorkerManager {
         savedWorker.currentAction ??
         null;
 
-      worker.currentStationId =
-        savedWorker.currentStationId ??
+      worker.currentStation =
+        savedWorker.currentStation ??
         null;
-
-      worker.waitingForStation =
-        Boolean(
-          savedWorker.waitingForStation
-        );
     }
   }
 }
