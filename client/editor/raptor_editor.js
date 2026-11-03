@@ -1,4 +1,6 @@
 const MAP_URL = "/assets/raptors/map-raptors.json";
+const ASSIGNMENTS_URL = "/assets/restaurant/raptorAssignments.json";
+
 const RAPTOR_PATH = "/assets/raptors/";
 
 const RAPTOR_SHEETS = [
