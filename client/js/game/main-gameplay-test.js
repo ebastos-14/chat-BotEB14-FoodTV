@@ -10,30 +10,46 @@ function showStatus(message) {
   }
 }
 
-async function testGameImport() {
+async function testModules() {
   try {
     showStatus(
-      "Probando importación de Game.js..."
+      "Probando MapRenderer..."
     );
 
-    const module =
-      await import("./Game.js");
-
-    if (
-      !module ||
-      !module.Game
-    ) {
-      throw new Error(
-        "Game.js no exporta Game."
-      );
-    }
+    await import(
+      "./MapRenderer.js"
+    );
 
     showStatus(
-      "Game.js cargó correctamente."
+      "MapRenderer OK. Probando GameState..."
+    );
+
+    await import(
+      "./GameState.js"
+    );
+
+    showStatus(
+      "GameState OK. Probando GameSystems..."
+    );
+
+    await import(
+      "./GameSystems.js"
+    );
+
+    showStatus(
+      "GameSystems OK. Probando GameplayRenderer..."
+    );
+
+    await import(
+      "./GameplayRenderer.js"
+    );
+
+    showStatus(
+      "Todos los módulos principales cargaron correctamente."
     );
   } catch (error) {
     showStatus(
-      "ERROR AL CARGAR GAME.JS: " +
+      "ERROR: " +
         (
           error?.message ||
           String(error)
@@ -42,4 +58,4 @@ async function testGameImport() {
   }
 }
 
-testGameImport();
+testModules();
