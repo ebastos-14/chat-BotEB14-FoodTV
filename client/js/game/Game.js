@@ -1,6 +1,7 @@
 import { MapRenderer } from "./MapRenderer.js";
 import { GameState } from "./GameState.js";
 import { GameSystems } from "./GameSystems.js";
+import { GameplayRenderer } from "./GameplayRenderer.js";
 
 export class Game {
   constructor(canvas) {
@@ -25,17 +26,6 @@ export class Game {
      * =========================
      * SISTEMAS DE GAMEPLAY
      * =========================
-     *
-     * Aquí viven:
-     *
-     * - posiciones lógicas
-     * - trabajadores
-     * - clientes
-     * - pedidos
-     * - acciones
-     *
-     * Todavía no se conectan
-     * directamente con el renderer.
      */
 
     this.systems =
@@ -51,6 +41,22 @@ export class Game {
       new MapRenderer(
         canvas
       );
+
+    /*
+     * =========================
+     * ADAPTADOR GAMEPLAY
+     * =========================
+     *
+     * Convierte el estado lógico
+     * de GameSystems en entidades
+     * visuales dentro de GameState.
+     */
+
+    this.gameplayRenderer =
+      new GameplayRenderer({
+        systems: this.systems,
+        state: this.state
+      });
 
     this.running = false;
     this.lastFrameTime = 0;
@@ -81,14 +87,37 @@ export class Game {
     await this.renderer.load();
 
     /*
-     * Inicialmente el juego
-     * no tiene entidades activas.
+     * Sincronizamos primero
+     * el gameplay con el estado
+     * visual.
+     */
+
+    this.gameplayRenderer.sync();
+
+    /*
+     * Después dibujamos.
      */
 
     this.syncRenderer();
 
     return this;
   }
+
+  /*
+   * =========================
+   * GAMEPLAY → VISUAL
+   * =========================
+   */
+
+  syncGameplay() {
+    this.gameplayRenderer.sync();
+  }
+
+  /*
+   * =========================
+   * VISUAL → MAP RENDERER
+   * =========================
+   */
 
   syncRenderer() {
     /*
@@ -156,10 +185,6 @@ export class Game {
    * Estas funciones continúan
    * existiendo para las pruebas
    * visuales actuales.
-   *
-   * Después podrán ser utilizadas
-   * por el adaptador gameplay ->
-   * renderer.
    */
 
   setRaptor(
@@ -266,9 +291,6 @@ export class Game {
      * - interacciones
      * - cooldowns
      * - timers
-     *
-     * Por ahora el estado
-     * permanece estático.
      */
 
     void deltaTime;
