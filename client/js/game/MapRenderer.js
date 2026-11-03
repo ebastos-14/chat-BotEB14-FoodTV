@@ -31,33 +31,13 @@ export class MapRenderer {
     this.foodMap = null;
     this.renderLayersConfig = null;
 
-    /*
-     * Layout fijo.
-     *
-     * Contiene únicamente las posiciones
-     * definidas por los mapas/editor.
-     */
     this.layout = {
       raptors: new Map(),
       food: new Map()
     };
 
-    /*
-     * Capas visuales fijas.
-     *
-     * Ejemplo:
-     *
-     * layer 0 -> fondo
-     * layer 3 -> Mostrador
-     */
     this.renderLayers = [];
 
-    /*
-     * Estado visual/runtime.
-     *
-     * Posteriormente será controlado por
-     * GameState y por los comandos.
-     */
     this.runtime = {
       raptors: new Map(),
       food: new Map()
@@ -69,9 +49,22 @@ export class MapRenderer {
 
     this.imageCache = new Map();
     this.loadingImages = new Set();
+
+    /*
+     * Modo de diagnóstico temporal.
+     *
+     * Cuando está activo:
+     * - Mostrador muestra un borde rojo.
+     * - Se escribe información en consola.
+     */
+    this.debugRenderLayers = true;
   }
 
   async load() {
+    console.log(
+      "[MapRenderer] Iniciando carga..."
+    );
+
     const [
       raptorMap,
       foodMap,
@@ -81,6 +74,19 @@ export class MapRenderer {
       this.loadJson(FOOD_MAP_URL),
       this.loadJson(RENDER_LAYERS_URL)
     ]);
+
+    console.log(
+      "[MapRenderer] map-raptors.json cargado."
+    );
+
+    console.log(
+      "[MapRenderer] map-food.json cargado."
+    );
+
+    console.log(
+      "[MapRenderer] render-layers.json cargado:",
+      renderLayersConfig
+    );
 
     this.validateMap(
       raptorMap,
@@ -101,10 +107,6 @@ export class MapRenderer {
     this.renderLayersConfig =
       renderLayersConfig;
 
-    /*
-     * El fondo principal sigue siendo
-     * la imagen completa del restaurante.
-     */
     const backgroundAsset =
       raptorMap.background?.asset ||
       foodMap.background?.asset;
@@ -119,10 +121,6 @@ export class MapRenderer {
       backgroundAsset
     );
 
-    /*
-     * Preparamos las capas visuales
-     * adicionales definidas en JSON.
-     */
     await this.loadRenderLayers();
 
     this.buildLayout();
@@ -131,14 +129,26 @@ export class MapRenderer {
 
     this.render();
 
+    console.log(
+      "[MapRenderer] Carga completada."
+    );
+
+    console.log(
+      "[MapRenderer] Capas activas:",
+      this.renderLayers
+    );
+
     return this;
   }
 
   async loadJson(url) {
     const response =
-      await fetch(url, {
-        cache: "no-store"
-      });
+      await fetch(
+        url,
+        {
+          cache: "no-store"
+        }
+      );
 
     if (!response.ok) {
       throw new Error(
@@ -176,7 +186,8 @@ export class MapRenderer {
       new Set();
 
     for (
-      const entity of map.entities
+      const entity of
+      map.entities
     ) {
       if (!entity.id) {
         throw new Error(
@@ -222,7 +233,8 @@ export class MapRenderer {
       new Set();
 
     for (
-      const layer of config.layers
+      const layer of
+      config.layers
     ) {
       if (!layer.id) {
         throw new Error(
@@ -247,7 +259,8 @@ export class MapRenderer {
       }
 
       if (
-        typeof layer.layer !== "number"
+        typeof layer.layer !==
+        "number"
       ) {
         throw new Error(
           `La capa ${layer.id} necesita un layer numérico.`
@@ -259,12 +272,25 @@ export class MapRenderer {
   async loadBackground(
     source
   ) {
+    console.log(
+      "[MapRenderer] Cargando fondo:",
+      source
+    );
+
     return new Promise(
       (resolve, reject) => {
         const image =
           new Image();
 
         image.onload = () => {
+          console.log(
+            "[MapRenderer] Fondo cargado:",
+            source,
+            image.naturalWidth,
+            "x",
+            image.naturalHeight
+          );
+
           this.backgroundImage =
             image;
 
@@ -272,6 +298,11 @@ export class MapRenderer {
         };
 
         image.onerror = () => {
+          console.error(
+            "[MapRenderer] ERROR cargando fondo:",
+            source
+          );
+
           reject(
             new Error(
               `No se pudo cargar el fondo: ${source}`
@@ -288,59 +319,91 @@ export class MapRenderer {
   async loadRenderLayers() {
     this.renderLayers = [];
 
+    console.log(
+      "[MapRenderer] Procesando capas..."
+    );
+
     for (
       const layerConfig of
       this.renderLayersConfig.layers
     ) {
       /*
-       * El fondo principal se dibuja
+       * El fondo principal ya se dibuja
        * mediante renderBackground().
-       *
-       * No lo duplicamos aquí.
        */
       if (
         layerConfig.asset ===
         this.raptorMap.background?.asset
       ) {
+        console.log(
+          "[MapRenderer] Fondo omitido de capas:",
+          layerConfig.id
+        );
+
         continue;
       }
 
-      const image =
-        await this.loadImageAsync(
+      console.log(
+        "[MapRenderer] Cargando capa:",
+        layerConfig.id,
+        layerConfig.asset,
+        "layer:",
+        layerConfig.layer
+      );
+
+      try {
+        const image =
+          await this.loadImageAsync(
+            layerConfig.asset
+          );
+
+        this.renderLayers.push({
+          id:
+            layerConfig.id,
+
+          type:
+            layerConfig.type ||
+            "image",
+
+          asset:
+            layerConfig.asset,
+
+          layer:
+            Number(
+              layerConfig.layer
+            ),
+
+          priority:
+            Number(
+              layerConfig.priority
+            ) || 0,
+
+          image
+        });
+
+        console.log(
+          "[MapRenderer] Capa cargada correctamente:",
+          layerConfig.id,
           layerConfig.asset
         );
-
-      this.renderLayers.push({
-        id:
+      } catch (error) {
+        console.error(
+          "[MapRenderer] ERROR cargando capa:",
           layerConfig.id,
-
-        type:
-          layerConfig.type ||
-          "image",
-
-        asset:
           layerConfig.asset,
+          error
+        );
 
-        layer:
-          Number(
-            layerConfig.layer
-          ),
-
-        priority:
-          Number(
-            layerConfig.priority
-          ) || 0,
-
-        image
-      });
+        /*
+         * No ocultamos el error.
+         *
+         * Esto permite que el resto del juego
+         * siga funcionando para diagnosticar
+         * la ruta del asset.
+         */
+      }
     }
 
-    /*
-     * Orden principal por layer.
-     *
-     * priority permite resolver dos elementos
-     * que estén exactamente en la misma capa.
-     */
     this.renderLayers.sort(
       (a, b) => {
         if (
@@ -386,13 +449,21 @@ export class MapRenderer {
             image
           );
 
+          console.log(
+            "[MapRenderer] Imagen cargada:",
+            source,
+            image.naturalWidth,
+            "x",
+            image.naturalHeight
+          );
+
           resolve(image);
         };
 
         image.onerror = () => {
           reject(
             new Error(
-              `No se pudo cargar imagen de capa: ${source}`
+              `No se pudo cargar imagen: ${source}`
             )
           );
         };
@@ -471,12 +542,6 @@ export class MapRenderer {
       const entity of
       this.foodMap.entities
     ) {
-      /*
-       * Las 8 entidades Menu_1...Menu_8
-       * son solamente referencias del
-       * spritesheet y no se renderizan
-       * sobre el restaurante.
-       */
       if (
         entity.type ===
         "menu"
@@ -787,15 +852,11 @@ export class MapRenderer {
       false;
 
     /*
-     * 1. FONDO
+     * CAPA 0
+     * Fondo del restaurante.
      */
     this.renderBackground();
 
-    /*
-     * 2. Construimos una lista única
-     *    de todos los elementos que
-     *    necesitan respetar capas.
-     */
     const renderList = [];
 
     /*
@@ -865,15 +926,9 @@ export class MapRenderer {
     }
 
     /*
-     * CAPAS VISUALES FIJAS
+     * CAPAS FIJAS
      *
      * Aquí entra Mostrador.png.
-     *
-     * No se pega directamente sobre
-     * el canvas antes/después de todo.
-     *
-     * Forma parte del mismo sistema
-     * de ordenamiento.
      */
     for (
       const layer of
@@ -885,29 +940,28 @@ export class MapRenderer {
 
         layer,
 
-        runtime: null,
-
         priority:
           layer.priority
       });
     }
 
     /*
-     * Orden final.
-     *
-     * Primero layer.
-     * Si coinciden, priority.
+     * Orden definitivo.
      */
     renderList.sort(
       (a, b) => {
         const layerA =
           Number(
-            a.layer
+            a.kind === "layer"
+              ? a.layer.layer
+              : a.layer
           ) || 0;
 
         const layerB =
           Number(
-            b.layer
+            b.kind === "layer"
+              ? b.layer.layer
+              : b.layer
           ) || 0;
 
         if (
@@ -922,12 +976,16 @@ export class MapRenderer {
 
         const priorityA =
           Number(
-            a.priority
+            a.kind === "layer"
+              ? a.layer.priority
+              : a.priority
           ) || 0;
 
         const priorityB =
           Number(
-            b.priority
+            b.kind === "layer"
+              ? b.layer.priority
+              : b.priority
           ) || 0;
 
         return (
@@ -938,7 +996,7 @@ export class MapRenderer {
     );
 
     /*
-     * Render final.
+     * Render.
      */
     for (
       const item of
@@ -1021,10 +1079,14 @@ export class MapRenderer {
       height
     } = this.getMapSize();
 
+    this.ctx.save();
+
+    this.ctx.imageSmoothingEnabled =
+      false;
+
     /*
-     * Mostrador.png tiene exactamente
-     * 1536 x 1536, por lo que se dibuja
-     * exactamente encima del mapa completo.
+     * La imagen ocupa exactamente
+     * el mismo espacio que el mapa.
      */
     this.ctx.drawImage(
       layer.image,
@@ -1035,6 +1097,53 @@ export class MapRenderer {
       height *
         this.scale
     );
+
+    /*
+     * DIAGNÓSTICO TEMPORAL
+     *
+     * Solo para confirmar que la capa
+     * realmente está siendo dibujada.
+     */
+    if (
+      this.debugRenderLayers &&
+      layer.id ===
+        "mostrador"
+    ) {
+      const screenWidth =
+        width *
+        this.scale;
+
+      const screenHeight =
+        height *
+        this.scale;
+
+      this.ctx.strokeStyle =
+        "#ff0000";
+
+      this.ctx.lineWidth =
+        3;
+
+      this.ctx.strokeRect(
+        this.offsetX,
+        this.offsetY,
+        screenWidth,
+        screenHeight
+      );
+
+      this.ctx.fillStyle =
+        "#ff0000";
+
+      this.ctx.font =
+        "bold 16px monospace";
+
+      this.ctx.fillText(
+        "MOSTRADOR LAYER 3 OK",
+        this.offsetX + 10,
+        this.offsetY + 24
+      );
+    }
+
+    this.ctx.restore();
   }
 
   renderRaptor(
