@@ -20,11 +20,10 @@ parseCommand
 * - Ignorar mensajes normales.
 * - Ignorar comandos que no pertenecen al juego.
 * - Convertir comandos permitidos en objetos estructurados.
-* - Conservar la información de roles del usuario.
 * 
 * Este módulo NO ejecuta comandos del juego.
 * Tampoco modifica GameState.
-  **/
+  */
   export class TwitchCommandReader {
   constructor() {
   this.client = null;
@@ -36,7 +35,7 @@ parseCommand
 
 * Registra la función que recibirá
 * los comandos válidos.
-  **/
+  */
   setCommandHandler(handler) {
   if (typeof handler !== "function") {
   throw new TypeError(
@@ -51,7 +50,7 @@ this.onCommand = handler;
 /**
 
 * Inicia la conexión con Twitch.
-  **/
+  */
   async start() {
   if (this.running) {
   return;
@@ -145,31 +144,31 @@ console.log(
   message,
   self
   ) {
-  /*
+  /
   * Ignorar mensajes enviados
   * por el propio bot.
-    **/
+    */
     if (self) {
     return;
     }
 
-/**
+/*
  * Normalizar el mensaje.
- **/
+ */
 const rawMessage =
   String(message || "").trim();
 
-/**
+/*
  * Ignorar mensajes normales.
- **/
+ */
 if (!rawMessage.startsWith("!")) {
   return;
 }
 
-/**
+/*
  * Obtener solamente el nombre
  * del comando.
- **/
+ */
 const parts =
   rawMessage.split(/\s+/);
 
@@ -178,20 +177,18 @@ const command =
     .slice(1)
     .toLowerCase();
 
-/**
- * Filtro principal.
- *
- * Si no es un comando del juego,
- * se ignora completamente.
- **/
+/*
+ * Ignorar inmediatamente cualquier
+ * comando que no pertenezca al juego.
+ */
 if (!isAllowedCommand(command)) {
   return;
 }
 
-/**
- * Convertir el mensaje en
- * estructura de comando.
- **/
+/*
+ * Convertir el mensaje a la estructura
+ * estándar del juego.
+ */
 const parsedCommand =
   parseCommand(rawMessage);
 
@@ -199,11 +196,11 @@ if (!parsedCommand) {
   return;
 }
 
-/**
+/*
  * Información del usuario proporcionada
  * por Twitch.
- **/
-const user = {
+ */
+const user = Object.freeze({
   username:
     String(
       tags?.username || ""
@@ -227,29 +224,23 @@ const user = {
 
   isSubscriber:
     Boolean(tags?.badges?.subscriber)
-};
+});
 
-/**
- * Crear el objeto final que recibirá
- * la siguiente capa.
- **/
-const commandData =
-  Object.freeze({
-    ...parsedCommand,
+/*
+ * Comando completo que pasará
+ * a la siguiente capa.
+ */
+const commandData = Object.freeze({
+  ...parsedCommand,
+  user,
+  channel
+});
 
-    user: Object.freeze(user),
-
-    channel
-  });
-
-/**
- * Entregar únicamente comandos
- * válidos del juego.
- **/
-if (
-  typeof this.onCommand ===
-  "function"
-) {
+/*
+ * Entregar solamente comandos válidos
+ * al receptor.
+ */
+if (typeof this.onCommand === "function") {
   this.onCommand(commandData);
 }
 
@@ -258,7 +249,7 @@ if (
 /**
 
 * Desconecta el lector de Twitch.
-  **/
+  */
   async stop() {
   if (!this.client) {
   return;
