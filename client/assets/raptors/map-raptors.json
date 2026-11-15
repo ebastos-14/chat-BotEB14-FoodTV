@@ -1,0 +1,171 @@
+{
+"version": 2,
+"mapId": "restaurant-main",
+"name": "Restaurante principal",
+"background": {
+"asset": "/assets/restaurant/map-background.png",
+"width": 1536,
+"height": 1536
+},
+"entities": [
+      {
+        "id": "Left_1",
+        "type": "raptor",
+        "profile": "lateral",
+        "position": {
+          "x": 250,
+          "y": 55
+        },
+        "scale": 0.488,
+        "mirror": true,
+        "layer": 3
+      },
+      {
+        "id": "Left_2",
+        "type": "raptor",
+        "profile": "lateral",
+        "position": {
+          "x": 250,
+          "y": 274
+        },
+        "scale": 0.488,
+        "mirror": true,
+        "layer": 3
+      },
+      {
+        "id": "Left_3",
+        "type": "raptor",
+        "profile": "lateral",
+        "position": {
+          "x": 250,
+          "y": 488
+        },
+        "scale": 0.488,
+        "mirror": true,
+        "layer": 3
+      },
+      {
+        "id": "Left_4",
+        "type": "raptor",
+        "profile": "lateral",
+        "position": {
+          "x": 250,
+          "y": 701
+        },
+        "scale": 0.488,
+        "mirror": true,
+        "layer": 3
+      },
+      {
+        "id": "Right_1",
+        "type": "raptor",
+        "profile": "lateral",
+        "position": {
+          "x": 1120,
+          "y": 30
+        },
+        "scale": 0.488,
+        "mirror": false,
+        "layer": 3
+      },
+      {
+        "id": "Right_2",
+        "type": "raptor",
+        "profile": "lateral",
+        "position": {
+          "x": 1120,
+          "y": 272
+        },
+        "scale": 0.488,
+        "mirror": false,
+        "layer": 3
+      },
+      {
+        "id": "Right_3",
+        "type": "raptor",
+        "profile": "lateral",
+        "position": {
+          "x": 1120,
+          "y": 509
+        },
+        "scale": 0.488,
+        "mirror": false,
+        "layer": 3
+      },
+      {
+        "id": "Right_4",
+        "type": "raptor",
+        "profile": "lateral",
+        "position": {
+          "x": 1120,
+          "y": 746
+        },
+        "scale": 0.488,
+        "mirror": false,
+        "layer": 3
+      },
+      {
+        "id": "Cashier",
+        "type": "raptor",
+        "profile": "front",
+        "position": {
+          "x": 760,
+          "y": 844
+        },
+        "scale": 0.5818,
+        "mirror": false,
+        "layer": 2
+      },
+      {
+        "id": "Client_1",
+        "type": "raptor",
+        "profile": "back",
+        "position": {
+          "x": 470,
+          "y": 1120
+        },
+        "scale": 0.488,
+        "mirror": false,
+        "layer": 5
+      },
+      {
+        "id": "Client_2",
+        "type": "raptor",
+        "profile": "back",
+        "position": {
+          "x": 644,
+          "y": 1120
+        },
+        "scale": 0.488,
+        "mirror": false,
+        "layer": 5
+      },
+      {
+        "id": "Client_3",
+        "type": "raptor",
+        "profile": "back",
+        "position": {
+          "x": 820,
+          "y": 1120
+        },
+        "scale": 0.488,
+        "mirror": false,
+        "layer": 5
+      },
+      {
+        "id": "Client_4",
+        "type": "raptor",
+        "profile": "back",
+        "position": {
+          "x": 994,
+          "y": 1120
+        },
+        "scale": 0.488,
+        "mirror": false,
+        "layer": 5
+      }
+    ],
+"zones": [],
+"spawns": [],
+"interactions": []
+}
