@@ -1,16 +1,17 @@
 {
-  "name": "chat-boteb14-foodtv",
-  "version": "0.1.0",
-  "description": "Chat'Donald's - restaurante pixel art interactivo para Twitch",
-  "type": "module",
-  "main": "server/index.js",
-  "scripts": {
-    "start": "node server/index.js"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "dependencies": {
-    "express": "^5.1.0"
-  }
+"name": "chat-boteb14-foodtv",
+"version": "0.1.0",
+"description": "chat-BotEB14-FoodTV",
+"type": "module",
+"main": "server/index.js",
+"scripts": {
+"start": "node server/index.js"
+},
+"engines": {
+"node": ">=20"
+},
+"dependencies": {
+"express": "^5.1.0",
+"tmi.js": "^1.8.5"
+}
 }
